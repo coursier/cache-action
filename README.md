@@ -8,7 +8,7 @@ Add a `coursier/cache-action@v1` step to your YAML workflow, like
 ```yaml
     steps:
       - uses: actions/checkout@v2
-      - uses: coursier/cache-action@v1
+      - uses: coursier/cache-action@v2
 ```
 
 ## Parameters
