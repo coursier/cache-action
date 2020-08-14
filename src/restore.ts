@@ -40,7 +40,6 @@ function getCachePath(os: string): string {
 }
 
 async function run(): Promise<void> {
-
   let paths: string[] = []
 
   const userSpecifiedCachePath = core.getInput('path')
