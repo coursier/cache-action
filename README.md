@@ -4,7 +4,7 @@ A GitHub action to save / restore the coursier cache of your build.
 
 ## Usage
 
-Add a `coursier/cache-action@v1` step to your YAML workflow, like
+Add a `coursier/cache-action@v2` step to your YAML workflow, like
 ```yaml
     steps:
       - uses: actions/checkout@v2
