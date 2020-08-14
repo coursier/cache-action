@@ -1,101 +1,43 @@
-<p align="center">
-  <a href="https://github.com/actions/typescript-action/actions"><img alt="typescript-action status" src="https://github.com/actions/typescript-action/workflows/build-test/badge.svg"></a>
-</p>
+# coursier cache action
 
-# Create a JavaScript Action using TypeScript
+A GitHub action to save / restore the coursier cache of your build.
 
-Use this template to bootstrap the creation of a TypeScript action.:rocket:
+## Usage
 
-This template includes compilation support, tests, a validation workflow, publishing, and versioning guidance.  
-
-If you are new, there's also a simpler introduction.  See the [Hello World JavaScript Action](https://github.com/actions/hello-world-javascript-action)
-
-## Create an action from this template
-
-Click the `Use this Template` and provide the new repo details for your action
-
-## Code in Main
-
-Install the dependencies  
-```bash
-$ npm install
-```
-
-Build the typescript and package it for distribution
-```bash
-$ npm run build && npm run package
-```
-
-Run the tests :heavy_check_mark:  
-```bash
-$ npm test
-
- PASS  ./index.test.js
-  ✓ throws invalid number (3ms)
-  ✓ wait 500 ms (504ms)
-  ✓ test runs (95ms)
-
-...
-```
-
-## Change action.yml
-
-The action.yml contains defines the inputs and output for your action.
-
-Update the action.yml with your name, description, inputs and outputs for your action.
-
-See the [documentation](https://help.github.com/en/articles/metadata-syntax-for-github-actions)
-
-## Change the Code
-
-Most toolkit and CI/CD operations involve async operations so the action is run in an async function.
-
-```javascript
-import * as core from '@actions/core';
-...
-
-async function run() {
-  try { 
-      ...
-  } 
-  catch (error) {
-    core.setFailed(error.message);
-  }
-}
-
-run()
-```
-
-See the [toolkit documentation](https://github.com/actions/toolkit/blob/master/README.md#packages) for the various packages.
-
-## Publish to a distribution branch
-
-Actions are run from GitHub repos so we will checkin the packed dist folder. 
-
-Then run [ncc](https://github.com/zeit/ncc) and push the results:
-```bash
-$ npm run package
-$ git add dist
-$ git commit -a -m "prod dependencies"
-$ git push origin releases/v1
-```
-
-Your action is now published! :rocket: 
-
-See the [versioning documentation](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
-
-## Validate
-
-You can now validate the action by referencing `./` in a workflow in your repo (see [test.yml](.github/workflows/test.yml))
-
+Add a `coursier/cache-action@v1` step to your YAML workflow, like
 ```yaml
-uses: ./
-with:
-  milliseconds: 1000
+    steps:
+      - uses: actions/checkout@v2
+      - uses: coursier/cache-action@v1
 ```
 
-See the [actions tab](https://github.com/actions/javascript-action/actions) for runs of this action! :rocket:
+## Parameters
 
-## Usage:
+### `root`
 
-After testing you can [create a v1 tag](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md) to reference the stable and latest V1 action
+*Optional* Root directory containing build definition sources (`build.sbt`, `build.sc`, etc.)
+
+If the sbt or mill build definition files are in a sub-directory, pass the path to this
+sub-directory here.
+
+### `path`
+
+*Optional* Override for the path of the coursier cache.
+
+By default, the coursier cache is assumed to be in the [default OS-dependent location](https://get-coursier.io/docs/cache.html#default-location).
+Set this input to override that. Note that this action will also set the `COURSIER_CACHE` environment variable
+if an override is specified, so that you don't have to set it yourself.
+
+### `extraFiles`
+
+*Optional* Extra files to take into account in the cache key.
+
+By default, sbt build definition files (`*.sbt`, `project/**.{scala,sbt}`, `project/build.properties`) and
+mill build definition files (`*.sc`, `./mill`) are hashed to uniquely identify the cached data. Upon
+cache restoration, if an exact match is found, the cache is not saved again at the end of the job.
+In case of no exact match, it is assumed new files may have been fetched; the previous cache for the
+current OS, if any, is restored, but a new cache is persisted with a new key at the end of the job.
+
+To take into account extra files in the cache key, pass via `extraFiles` either
+- a single path as a string
+- multiple paths in a JSON array, encoded in a string

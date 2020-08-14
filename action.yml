@@ -1,11 +1,40 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'coursier-cache-action'
+description: 'Restores and saves the coursier cache'
+author: 'Alexandre Archambault'
+branding:
+  icon: 'arrow-down'
+  color: 'white'
 inputs:
-  milliseconds: # change this
-    required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+  root:
+    required: false
+    description: >
+      Root directory containing build definition sources (build.sbt, build.sc, etc.)
+      If the sbt or mill build definition files are in a sub-directory, pass the path to this
+      sub-directory here.
+    default: '.'
+  path:
+    required: false
+    description: >
+      Override for the path of the coursier cache.
+      By default, the coursier cache is assumed to be in the default OS-dependent location.
+      Set this input to override that. Note that this action will also set COURSIER_CACHE
+      if an override is specified, so that you don't have to set it yourself.
+    default: ''
+  extraFiles:
+    required: false
+    description: >
+      Extra files to take into account in the cache key.
+      By default, sbt build definition files (*.sbt, project/**.{scala,sbt}, project/build.properties) and
+      mill build definition files (*.sc, ./mill) are hashed to uniquely identify the cached data. Upon
+      cache restoration, if an exact match is found, the cache is not saved again at the end of the job.
+      In case of no exact match, it is assumed new files may have been fetched; the previous cache for the
+      current OS, if any, is restored, but a new cache is persisted with a new key at the end of the job.
+      To take into account extra files in the cache key, pass via extraFiles either
+      - a single path as a string
+      - multiple paths in a JSON array, encoded in a string
+    default: ''
 runs:
   using: 'node12'
-  main: 'dist/index.js'
+  main: 'dist/restore/index.js'
+  post: 'dist/save/index.js'
+  post-if: 'success()'
