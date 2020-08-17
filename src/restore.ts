@@ -115,6 +115,10 @@ async function restoreMillCache(inputFiles: string[]): Promise<void> {
   await restoreCache('mill', ['~/.mill'], inputFiles)
 }
 
+async function restoreAmmoniteCache(inputFiles: string[]): Promise<void> {
+  await restoreCache('ammonite', ['~/.ammonite'], inputFiles)
+}
+
 function readExtraFiles(variableName: string): string[] {
   const extraFilesStr = core.getInput(variableName)
   let extraFiles: string[] = []
@@ -137,6 +141,7 @@ async function run(): Promise<void> {
   const extraFiles = readExtraFiles('extraFiles')
   const extraSbtFiles = readExtraFiles('extraSbtFiles')
   const extraMillFiles = readExtraFiles('extraMillFiles')
+  const extraAmmoniteFiles = readExtraFiles('ammoniteScripts')
 
   const sbtGlobs = [
     `${root}*.sbt`,
@@ -147,10 +152,17 @@ async function run(): Promise<void> {
 
   const millGlobs = [`${root}*.sc`, `${root}mill`].concat(extraMillFiles)
 
+  const ammoniteGlobs = [`${root}*.sc`, `${root}*/*.sc`].concat(
+    extraAmmoniteFiles
+  )
+
   const hasSbtFiles = (await doGlob(sbtGlobs)).length > 0
   const hasMillFiles = (await doGlob(millGlobs)).length > 0
+  const hasAmmoniteFiles = (await doGlob(ammoniteGlobs)).length > 0
 
-  await restoreCoursierCache(sbtGlobs.concat(millGlobs).concat(extraFiles))
+  await restoreCoursierCache(
+    sbtGlobs.concat(millGlobs).concat(ammoniteGlobs).concat(extraFiles)
+  )
 
   if (hasSbtFiles) {
     await restoreSbtCache(sbtGlobs.concat(extraFiles))
@@ -158,6 +170,10 @@ async function run(): Promise<void> {
 
   if (hasMillFiles) {
     await restoreMillCache(millGlobs.concat(extraFiles))
+  }
+
+  if (hasAmmoniteFiles) {
+    await restoreAmmoniteCache(ammoniteGlobs.concat(extraFiles))
   }
 }
 

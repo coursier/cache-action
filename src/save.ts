@@ -42,6 +42,7 @@ async function run(): Promise<void> {
   await restoreCache('coursier')
   await restoreCache('sbt')
   await restoreCache('mill')
+  await restoreCache('ammonite')
 }
 
 async function doRun(): Promise<void> {
