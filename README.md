@@ -1,6 +1,6 @@
 # coursier cache action
 
-A GitHub action to save / restore the coursier cache of your build.
+A GitHub action to save / restore the coursier / sbt / mill / Ammonite caches of your build.
 
 ## Usage
 
