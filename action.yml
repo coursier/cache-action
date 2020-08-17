@@ -32,6 +32,22 @@ inputs:
       To take into account extra files in the cache key, pass via extraFiles either
       - a single path as a string
       - multiple paths in a JSON array, encoded in a string
+      Blobs are accepted (processed by [glob-all](https://www.npmjs.com/package/glob-all)).
+    default: ''
+  extraSbtFiles:
+    required: false
+    description: >
+      Extra sbt files to take into account in the sbt cache key. Same format as extraFiles.
+    default: ''
+  extraMillFiles:
+    required: false
+    description: >
+      Extra mill files to take into account in the mill cache key. Same format as extraFiles.
+    default: ''
+  ammoniteScripts:
+    required: false
+    description: >
+      Ammonite scripts to take into account in the Ammonite cache key. Same format as extraFiles.
     default: ''
 runs:
   using: 'node12'
