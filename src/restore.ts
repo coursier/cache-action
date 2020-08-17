@@ -150,14 +150,19 @@ async function run(): Promise<void> {
     `${root}project/**.scala`
   ].concat(extraSbtFiles)
 
-  const millGlobs = [`${root}*.sc`, `${root}mill`].concat(extraMillFiles)
+  const millSpecificGlobs = [`${root}.mill-version`, `${root}mill`].concat(
+    extraMillFiles
+  )
+  const millGlobs = [`${root}*.sc`]
+    .concat(millSpecificGlobs)
+    .concat(extraMillFiles)
 
   const ammoniteGlobs = [`${root}*.sc`, `${root}*/*.sc`].concat(
     extraAmmoniteFiles
   )
 
   const hasSbtFiles = (await doGlob(sbtGlobs)).length > 0
-  const hasMillFiles = (await doGlob(millGlobs)).length > 0
+  const hasMillFiles = (await doGlob(millSpecificGlobs)).length > 0
   const hasAmmoniteFiles = (await doGlob(ammoniteGlobs)).length > 0
 
   await restoreCoursierCache(
