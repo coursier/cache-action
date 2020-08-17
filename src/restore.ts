@@ -90,7 +90,7 @@ async function restoreCache(
   }
 
   core.info(`${id} cache restored from key ${cacheHitKey}`)
-  core.setOutput(`${upperId}_CACHE_RESULT`, cacheHitKey)
+  core.saveState(`${upperId}_CACHE_RESULT`, cacheHitKey)
 }
 
 async function restoreCoursierCache(inputFiles: string[]): Promise<void> {

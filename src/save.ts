@@ -18,7 +18,7 @@ async function restoreCache(id: string): Promise<void> {
 
   if (cacheKey === primaryKey) {
     core.info(
-      `Cache hit occurred on the primary key ${primaryKey}, not saving ${id} cache.`
+      `Cache hit occurred on key ${primaryKey}, not saving ${id} cache.`
     )
     return
   }
