@@ -4,12 +4,38 @@ A GitHub action to save / restore the coursier cache of your build.
 
 ## Usage
 
-Add a `coursier/cache-action@v2` step to your YAML workflow, like
+Add a `coursier/cache-action@v3` step to your YAML workflow, like
 ```yaml
     steps:
       - uses: actions/checkout@v2
-      - uses: coursier/cache-action@v2
+      - uses: coursier/cache-action@v3
 ```
+
+## Cached directories
+
+### Coursier cache
+
+Always cached.
+
+Add files to take into account in its cache key via [`extraFiles`](#extrafiles).
+
+### `~/.sbt`
+
+Cached when sbt files are found (any of `*.sbt`, `project/**.scala`, `project/**.sbt`, `project/build.properties`).
+
+Add files to take into account in its cache key via [`extraSbtFiles`](#extrasbtfiles).
+
+### `~/.mill`
+
+Cached when mill files are found (any of `.mill-version`, `./mill`).
+
+Add files to take into account in its cache key via [`extraMillFiles`](#extramillfiles).
+
+### `~/.ammonite`
+
+Cached when Ammonite scripts are found (any of `*.sc`, `*/*.sc`).
+
+Add files to take into account in its cache key via [`ammoniteScripts`](#ammonitescripts).
 
 ## Parameters
 
@@ -41,3 +67,17 @@ current OS, if any, is restored, but a new cache is persisted with a new key at 
 To take into account extra files in the cache key, pass via `extraFiles` either
 - a single path as a string
 - multiple paths in a JSON array, encoded in a string
+
+Blobs are accepted (processed by [glob-all](https://www.npmjs.com/package/glob-all)).
+
+### `extraSbtFiles`
+
+*Optional* Extra sbt files to take into account in the sbt cache key. Same format as extraFiles.
+
+### `extraMillFiles`
+
+*Optional* Extra mill files to take into account in the mill cache key. Same format as extraFiles.
+
+### `ammoniteScripts`
+
+*Optional* Extra Ammonite scripts to take into account in the Ammonite cache key. Same format as extraFiles.
