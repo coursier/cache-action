@@ -165,15 +165,15 @@ async function run(): Promise<void> {
   )
 
   if (hasSbtFiles) {
-    await restoreSbtCache(sbtGlobs.concat(extraFiles))
+    await restoreSbtCache(sbtGlobs)
   }
 
   if (hasMillFiles) {
-    await restoreMillCache(millGlobs.concat(extraFiles))
+    await restoreMillCache(millGlobs)
   }
 
   if (hasAmmoniteFiles) {
-    await restoreAmmoniteCache(ammoniteGlobs.concat(extraFiles))
+    await restoreAmmoniteCache(ammoniteGlobs)
   }
 }
 
