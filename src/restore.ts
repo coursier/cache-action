@@ -2,23 +2,27 @@ import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 const hashFiles = require('hash-files')
+const glob = require('glob-all')
 
-// from https://github.com/c-hive/gha-npm-cache/blob/1d899ca6403e4536a2855679ab78f5b89a870863/src/restore.js#L6-L17
-async function uname(short: boolean): Promise<string> {
-  let output = ''
-  const options = {
-    listeners: {
-      stdout: (data: any) => {
-        output += data.toString()
+let _unameValue = ''
+
+async function uname(): Promise<string> {
+  if (!_unameValue) {
+    // from https://github.com/c-hive/gha-npm-cache/blob/1d899ca6403e4536a2855679ab78f5b89a870863/src/restore.js#L6-L17
+    let output = ''
+    const options = {
+      listeners: {
+        stdout: (data: any) => {
+          output += data.toString()
+        }
       }
     }
+    await exec.exec('uname', ['-s'], options)
+
+    _unameValue = output.trim()
   }
-  const args: string[] = []
-  if (short) args.push('-s')
 
-  await exec.exec('uname', args, options)
-
-  return output.trim()
+  return _unameValue
 }
 
 function getOs(unameShort: string): string {
@@ -39,7 +43,57 @@ function getCachePath(os: string): string {
   return '~/.cache/coursier'
 }
 
-async function run(): Promise<void> {
+async function doHashFiles(files: string[]): Promise<string> {
+  const hashOptions = {
+    files,
+    algorithm: 'sha1'
+  }
+  return new Promise<string>((resolve, reject) => {
+    hashFiles(hashOptions, (error: any, hash: string) => {
+      if (hash) resolve(hash)
+      else reject(error)
+    })
+  })
+}
+
+async function doGlob(globs: string[]): Promise<string[]> {
+  return new Promise<string[]>((resolve, reject) => {
+    glob(globs, (error: any, files: string[]) => {
+      if (files) resolve(files)
+      else reject(error)
+    })
+  })
+}
+
+async function restoreCache(
+  id: string,
+  paths: string[],
+  inputFiles: string[]
+): Promise<void> {
+  const os = await uname()
+
+  const upperId = id.toLocaleUpperCase('en-US')
+
+  const hash = await doHashFiles(inputFiles)
+
+  const key = `${os}-${id}-${hash}`
+  const restoreKeys = [`${os}-${id}-`]
+
+  core.saveState(`${upperId}_CACHE_PATHS`, JSON.stringify(paths))
+  core.saveState(`${upperId}_CACHE_KEY`, key)
+
+  const cacheHitKey = await cache.restoreCache(paths, key, restoreKeys)
+
+  if (!cacheHitKey) {
+    core.info(`${id} cache not found`)
+    return
+  }
+
+  core.info(`${id} cache restored from key ${cacheHitKey}`)
+  core.saveState(`${upperId}_CACHE_RESULT`, cacheHitKey)
+}
+
+async function restoreCoursierCache(inputFiles: string[]): Promise<void> {
   let paths: string[] = []
 
   const userSpecifiedCachePath = core.getInput('path')
@@ -47,17 +101,26 @@ async function run(): Promise<void> {
     paths = [userSpecifiedCachePath]
     core.exportVariable('COURSIER_CACHE', userSpecifiedCachePath)
   } else {
-    paths = [getCachePath(getOs(await uname(true)))]
+    paths = [getCachePath(getOs(await uname()))]
   }
 
-  const os = await uname(false)
+  await restoreCache('coursier', paths, inputFiles)
+}
 
-  let root = core.getInput('root')
-  if (!root.endsWith('/')) {
-    root = `${root}/`
-  }
+async function restoreSbtCache(inputFiles: string[]): Promise<void> {
+  await restoreCache('sbt', ['~/.sbt'], inputFiles)
+}
 
-  const extraFilesStr = core.getInput('extraFiles')
+async function restoreMillCache(inputFiles: string[]): Promise<void> {
+  await restoreCache('mill', ['~/.mill'], inputFiles)
+}
+
+async function restoreAmmoniteCache(inputFiles: string[]): Promise<void> {
+  await restoreCache('ammonite', ['~/.ammonite'], inputFiles)
+}
+
+function readExtraFiles(variableName: string): string[] {
+  const extraFilesStr = core.getInput(variableName)
   let extraFiles: string[] = []
   if (extraFilesStr) {
     if (extraFilesStr.startsWith('[')) {
@@ -66,44 +129,57 @@ async function run(): Promise<void> {
       extraFiles = [extraFilesStr]
     }
   }
+  return extraFiles
+}
 
-  const hashOptions = {
-    files: [
-      // sbt
-      `${root}*.sbt`,
-      `${root}project/**.sbt`,
-      `${root}project/build.properties`,
-      `${root}project/**.scala`,
-      // mill / Ammonite scripts
-      `${root}*.sc`,
-      `${root}mill`
-    ].concat(extraFiles),
-    algorithm: 'sha1'
+async function run(): Promise<void> {
+  let root = core.getInput('root')
+  if (!root.endsWith('/')) {
+    root = `${root}/`
   }
 
-  const hashPromise = new Promise<string>((resolve, reject) => {
-    hashFiles(hashOptions, (error: any, hash: string) => {
-      if (hash) resolve(hash)
-      else reject(error)
-    })
-  })
-  const hash = await hashPromise
+  const extraFiles = readExtraFiles('extraFiles')
+  const extraSbtFiles = readExtraFiles('extraSbtFiles')
+  const extraMillFiles = readExtraFiles('extraMillFiles')
+  const extraAmmoniteFiles = readExtraFiles('ammoniteScripts')
 
-  const key = `${os}-coursier-${hash}`
-  const restoreKeys = [`${os}-coursier-`]
+  const sbtGlobs = [
+    `${root}*.sbt`,
+    `${root}project/**.sbt`,
+    `${root}project/build.properties`,
+    `${root}project/**.scala`
+  ].concat(extraSbtFiles)
 
-  core.saveState('COURSIER_CACHE_PATHS', JSON.stringify(paths))
-  core.saveState('COURSIER_CACHE_KEY', key)
+  const millSpecificGlobs = [`${root}.mill-version`, `${root}mill`].concat(
+    extraMillFiles
+  )
+  const millGlobs = [`${root}*.sc`]
+    .concat(millSpecificGlobs)
+    .concat(extraMillFiles)
 
-  const cacheHitKey = await cache.restoreCache(paths, key, restoreKeys)
+  const ammoniteGlobs = [`${root}*.sc`, `${root}*/*.sc`].concat(
+    extraAmmoniteFiles
+  )
 
-  if (!cacheHitKey) {
-    core.info('Cache not found')
-    return
+  const hasSbtFiles = (await doGlob(sbtGlobs)).length > 0
+  const hasMillFiles = (await doGlob(millSpecificGlobs)).length > 0
+  const hasAmmoniteFiles = (await doGlob(ammoniteGlobs)).length > 0
+
+  await restoreCoursierCache(
+    sbtGlobs.concat(millGlobs).concat(ammoniteGlobs).concat(extraFiles)
+  )
+
+  if (hasSbtFiles) {
+    await restoreSbtCache(sbtGlobs)
   }
 
-  core.info(`Cache restored from key ${cacheHitKey}`)
-  core.setOutput('COURSIER_CACHE_RESULT', cacheHitKey)
+  if (hasMillFiles) {
+    await restoreMillCache(millGlobs)
+  }
+
+  if (hasAmmoniteFiles) {
+    await restoreAmmoniteCache(ammoniteGlobs)
+  }
 }
 
 async function doRun(): Promise<void> {

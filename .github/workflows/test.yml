@@ -20,5 +20,6 @@ jobs:
       - uses: ./
         with:
           root: test
-      - run: cd test && ./sbt compile
+          extraFiles: test/foo.sh # for the ammonite-runner version
+      - run: cd test && ./sbt compile && ./foo.sh
         shell: bash
