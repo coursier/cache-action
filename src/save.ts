@@ -28,9 +28,9 @@ async function restoreCache(id: string): Promise<void> {
     core.info(`Saving ${id} cache`)
     await cache.saveCache(cachePaths, primaryKey)
   } catch (error) {
-    if (error.name === cache.ValidationError.name) {
+    if (error.name === 'ValidationError') {
       throw error
-    } else if (error.name === cache.ReserveCacheError.name) {
+    } else if (error.name === 'ReserveCacheError') {
       core.info(error.message)
     } else {
       core.info(`[warning] ${error.message}`)
