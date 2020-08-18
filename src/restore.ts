@@ -108,7 +108,7 @@ async function restoreCoursierCache(inputFiles: string[]): Promise<void> {
 }
 
 async function restoreSbtCache(inputFiles: string[]): Promise<void> {
-  await restoreCache('sbt', ['~/.sbt'], inputFiles)
+  await restoreCache('sbt-ivy2-cache', ['~/.sbt', '~/.ivy2/cache'], inputFiles)
 }
 
 async function restoreMillCache(inputFiles: string[]): Promise<void> {
