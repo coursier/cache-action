@@ -3,7 +3,7 @@
 import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 
-async function restoreCache(id: string): Promise<void> {
+async function saveCache(id: string): Promise<void> {
   const upperId = id.toLocaleUpperCase('en-US')
   const primaryKey = core.getState(`${upperId}_CACHE_KEY`)
 
@@ -39,10 +39,10 @@ async function restoreCache(id: string): Promise<void> {
 }
 
 async function run(): Promise<void> {
-  await restoreCache('coursier')
-  await restoreCache('sbt')
-  await restoreCache('mill')
-  await restoreCache('ammonite')
+  await saveCache('coursier')
+  await saveCache('sbt-ivy2-cache')
+  await saveCache('mill')
+  await saveCache('ammonite')
 }
 
 async function doRun(): Promise<void> {
