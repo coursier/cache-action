@@ -34,6 +34,12 @@ inputs:
       - multiple paths in a JSON array, encoded in a string
       Blobs are accepted (processed by [glob-all](https://www.npmjs.com/package/glob-all)).
     default: ''
+  extraKey:
+    required: false
+    description: >
+      Extra value to be appended to the coursier cache key.
+      See extraFiles for more details.
+    default: ''
   extraHashedContent:
     required: false
     description: >
@@ -46,6 +52,12 @@ inputs:
     description: >
       Extra sbt files to take into account in the sbt cache key. Same format as extraFiles.
     default: ''
+  extraSbtKey:
+    required: false
+    description: >
+      Extra value to be appended to the sbt cache key.
+      See extraFiles for more details.
+    default: ''
   extraSbtHashedContent:
     required: false
     description: >
@@ -56,6 +68,12 @@ inputs:
     description: >
       Extra mill files to take into account in the mill cache key. Same format as extraFiles.
     default: ''
+  extraMillKey:
+    required: false
+    description: >
+      Extra value to be appended to the mill cache key.
+      See extraFiles for more details.
+    default: ''
   extraMillHashedContent:
     required: false
     description: >
@@ -65,6 +83,12 @@ inputs:
     required: false
     description: >
       Ammonite scripts to take into account in the Ammonite cache key. Same format as extraFiles.
+    default: ''
+  extraAmmoniteKey:
+    required: false
+    description: >
+      Extra value to be appended to the Ammonite cache key.
+      See extraFiles for more details.
     default: ''
   extraAmmoniteHashedContent:
     required: false
