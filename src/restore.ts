@@ -1,8 +1,9 @@
 import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
-const hashFiles = require('hash-files')
+const fs = require('fs')
 const glob = require('glob-all')
+const hashFiles = require('hash-files')
 
 let _unameValue = ''
 
@@ -68,16 +69,44 @@ async function doGlob(globs: string[]): Promise<string[]> {
 async function restoreCache(
   id: string,
   paths: string[],
-  inputFiles: string[]
+  inputFiles: string[],
+  extraKey: string,
+  extraHashedContent: string
 ): Promise<void> {
   const os = await uname()
 
   const upperId = id.toLocaleUpperCase('en-US')
 
-  const hash = await doHashFiles(inputFiles)
+  let hash = ''
 
-  const key = `${os}-${id}-${hash}`
+  if (extraHashedContent.length === 0) {
+    hash = await doHashFiles(inputFiles)
+  } else {
+    const tmpFilePath = '.tmp-cs-cache-key'
+    const writeTmpFile = new Promise<void>((resolve, reject) => {
+      fs.writeFile(tmpFilePath, extraHashedContent, (err: any) => {
+        if (err) reject(err)
+        else resolve()
+      })
+    })
+    await writeTmpFile
+    hash = await doHashFiles(inputFiles.concat([tmpFilePath]))
+    const removeTmpFile = new Promise<void>((resolve, reject) => {
+      fs.unlink(tmpFilePath, (err: any) => {
+        if (err) reject(err)
+        else resolve()
+      })
+    })
+    await removeTmpFile
+  }
+
+  let key = `${os}-${id}-${hash}`
   const restoreKeys = [`${os}-${id}-`]
+
+  if (extraKey.length > 0) {
+    restoreKeys.push(`${key}-`)
+    key = `${key}-${extraKey}`
+  }
 
   core.saveState(`${upperId}_CACHE_PATHS`, JSON.stringify(paths))
   core.saveState(`${upperId}_CACHE_KEY`, key)
@@ -93,7 +122,11 @@ async function restoreCache(
   core.saveState(`${upperId}_CACHE_RESULT`, cacheHitKey)
 }
 
-async function restoreCoursierCache(inputFiles: string[]): Promise<void> {
+async function restoreCoursierCache(
+  inputFiles: string[],
+  extraKey: string,
+  extraHashedContent: string
+): Promise<void> {
   let paths: string[] = []
 
   const userSpecifiedCachePath = core.getInput('path')
@@ -104,19 +137,55 @@ async function restoreCoursierCache(inputFiles: string[]): Promise<void> {
     paths = [getCachePath(getOs(await uname()))]
   }
 
-  await restoreCache('coursier', paths, inputFiles)
+  await restoreCache(
+    'coursier',
+    paths,
+    inputFiles,
+    extraKey,
+    extraHashedContent
+  )
 }
 
-async function restoreSbtCache(inputFiles: string[]): Promise<void> {
-  await restoreCache('sbt-ivy2-cache', ['~/.sbt', '~/.ivy2/cache'], inputFiles)
+async function restoreSbtCache(
+  inputFiles: string[],
+  extraKey: string,
+  extraHashedContent: string
+): Promise<void> {
+  await restoreCache(
+    'sbt-ivy2-cache',
+    ['~/.sbt', '~/.ivy2/cache'],
+    inputFiles,
+    extraKey,
+    extraHashedContent
+  )
 }
 
-async function restoreMillCache(inputFiles: string[]): Promise<void> {
-  await restoreCache('mill', ['~/.mill'], inputFiles)
+async function restoreMillCache(
+  inputFiles: string[],
+  extraKey: string,
+  extraHashedContent: string
+): Promise<void> {
+  await restoreCache(
+    'mill',
+    ['~/.mill'],
+    inputFiles,
+    extraKey,
+    extraHashedContent
+  )
 }
 
-async function restoreAmmoniteCache(inputFiles: string[]): Promise<void> {
-  await restoreCache('ammonite', ['~/.ammonite'], inputFiles)
+async function restoreAmmoniteCache(
+  inputFiles: string[],
+  extraKey: string,
+  extraHashedContent: string
+): Promise<void> {
+  await restoreCache(
+    'ammonite',
+    ['~/.ammonite'],
+    inputFiles,
+    extraKey,
+    extraHashedContent
+  )
 }
 
 function readExtraFiles(variableName: string): string[] {
@@ -132,6 +201,12 @@ function readExtraFiles(variableName: string): string[] {
   return extraFiles
 }
 
+function readExtraKeys(variableName: string): string {
+  let extraFilesStr = core.getInput(variableName)
+  if (!extraFilesStr) extraFilesStr = ''
+  return extraFilesStr
+}
+
 async function run(): Promise<void> {
   let root = core.getInput('root')
   if (!root.endsWith('/')) {
@@ -142,6 +217,16 @@ async function run(): Promise<void> {
   const extraSbtFiles = readExtraFiles('extraSbtFiles')
   const extraMillFiles = readExtraFiles('extraMillFiles')
   const extraAmmoniteFiles = readExtraFiles('ammoniteScripts')
+
+  const extraHashedContent = readExtraKeys('extraHashedContent')
+  const extraSbtHashedContent = readExtraKeys('extraSbtHashedContent')
+  const extraMillHashedContent = readExtraKeys('extraMillHashedContent')
+  const extraAmmoniteHashedContent = readExtraKeys('extraAmmoniteHashedContent')
+
+  const extraKey = readExtraKeys('extraKey')
+  const extraSbtKey = readExtraKeys('extraSbtKey')
+  const extraMillKey = readExtraKeys('extraMillKey')
+  const extraAmmoniteKey = readExtraKeys('extraAmmoniteKey')
 
   const sbtGlobs = [
     `${root}*.sbt`,
@@ -166,19 +251,44 @@ async function run(): Promise<void> {
   const hasAmmoniteFiles = (await doGlob(ammoniteGlobs)).length > 0
 
   await restoreCoursierCache(
-    sbtGlobs.concat(millGlobs).concat(ammoniteGlobs).concat(extraFiles)
+    sbtGlobs.concat(millGlobs).concat(ammoniteGlobs).concat(extraFiles),
+    extraKey,
+    JSON.stringify({
+      sbt: extraSbtHashedContent,
+      mill: extraMillHashedContent,
+      amm: extraAmmoniteHashedContent,
+      other: extraHashedContent
+    })
   )
 
   if (hasSbtFiles) {
-    await restoreSbtCache(sbtGlobs)
+    await restoreSbtCache(
+      sbtGlobs,
+      extraSbtKey,
+      JSON.stringify({
+        sbt: extraSbtHashedContent
+      })
+    )
   }
 
   if (hasMillFiles) {
-    await restoreMillCache(millGlobs)
+    await restoreMillCache(
+      millGlobs,
+      extraMillKey,
+      JSON.stringify({
+        mill: extraMillHashedContent
+      })
+    )
   }
 
   if (hasAmmoniteFiles) {
-    await restoreAmmoniteCache(ammoniteGlobs)
+    await restoreAmmoniteCache(
+      ammoniteGlobs,
+      extraAmmoniteKey,
+      JSON.stringify({
+        amm: extraAmmoniteHashedContent
+      })
+    )
   }
 }
 

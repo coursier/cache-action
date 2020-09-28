@@ -34,20 +34,66 @@ inputs:
       - multiple paths in a JSON array, encoded in a string
       Blobs are accepted (processed by [glob-all](https://www.npmjs.com/package/glob-all)).
     default: ''
+  extraKey:
+    required: false
+    description: >
+      Extra value to be appended to the coursier cache key.
+      See extraFiles for more details.
+    default: ''
+  extraHashedContent:
+    required: false
+    description: >
+      Extra content to take into account in the cache key.
+      See extraFiles for more details.
+      The content of extraHashedContent is taken into account in the hash for the coursier cache key.
+    default: ''
   extraSbtFiles:
     required: false
     description: >
       Extra sbt files to take into account in the sbt cache key. Same format as extraFiles.
+    default: ''
+  extraSbtKey:
+    required: false
+    description: >
+      Extra value to be appended to the sbt cache key.
+      See extraFiles for more details.
+    default: ''
+  extraSbtHashedContent:
+    required: false
+    description: >
+      Extra content to take into account in the sbt cache key. Same format as extraHashedContent.
     default: ''
   extraMillFiles:
     required: false
     description: >
       Extra mill files to take into account in the mill cache key. Same format as extraFiles.
     default: ''
+  extraMillKey:
+    required: false
+    description: >
+      Extra value to be appended to the mill cache key.
+      See extraFiles for more details.
+    default: ''
+  extraMillHashedContent:
+    required: false
+    description: >
+      Extra content to take into account in the mill cache key. Same format as extraHashedContent.
+    default: ''
   ammoniteScripts:
     required: false
     description: >
       Ammonite scripts to take into account in the Ammonite cache key. Same format as extraFiles.
+    default: ''
+  extraAmmoniteKey:
+    required: false
+    description: >
+      Extra value to be appended to the Ammonite cache key.
+      See extraFiles for more details.
+    default: ''
+  extraAmmoniteHashedContent:
+    required: false
+    description: >
+      Extra content to take into account in the Ammonite cache key. Same format as extraHashedContent.
     default: ''
 runs:
   using: 'node12'
