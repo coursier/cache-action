@@ -81,3 +81,21 @@ Blobs are accepted (processed by [glob-all](https://www.npmjs.com/package/glob-a
 ### `ammoniteScripts`
 
 *Optional* Extra Ammonite scripts to take into account in the Ammonite cache key. Same format as extraFiles.
+
+### `extraKey`
+
+*Optional*
+
+Extra value to be appended to the coursier cache key.
+
+See `extraFiles` for more details.
+
+### `extraHashedContent`
+
+*Optional*
+
+Extra content to take into account in the cache key.
+
+See `extraFiles` for more details.
+
+The content of `extraHashedContent` is taken into account in the hash for the coursier cache key.
