@@ -296,7 +296,8 @@ async function run(): Promise<void> {
   if (core.getInput('read-cs-cache-files') !== 'false') {
     const isFilePromise = new Promise<boolean>((resolve, reject) => {
       stat('.github/cs-cache-files', (err, stats) => {
-        if (err) reject(err)
+        if (err && err.code === 'ENOENT') resolve(false)
+        else if (err) reject(err)
         else resolve(stats.isFile())
       })
     })
