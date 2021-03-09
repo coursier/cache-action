@@ -20,6 +20,20 @@ inputs:
       Set this input to override that. Note that this action will also set COURSIER_CACHE
       if an override is specified, so that you don't have to set it yourself.
     default: ''
+  job:
+    required: false
+    description: >
+      Job name, to be used in the cache key, so that each job has its own cache.
+    default: '${{ github.job }}'
+  matrix:
+    required: false
+    description: >
+      Matrix values, when using the matrix strategy.
+      When using build matrices for more than the OS (for Scala versions, JDKs, test suites, …),
+      pass the matrix values here, with `matrix: -dollar-{{ toJson(matrix) }}`. The matrix instance is hashed,
+      and added to the cache key, so that each matrix instance has its own cache, and those caches don't
+      collide.
+    default: '${{ toJson(matrix) }}'
   extraFiles:
     required: false
     description: >

@@ -1,7 +1,7 @@
 import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
-const fs = require('fs')
+import {readFile, stat, unlink, writeFile} from 'fs'
 const glob = require('glob-all')
 const hashFiles = require('hash-files')
 
@@ -12,6 +12,7 @@ async function uname(): Promise<string> {
     // from https://github.com/c-hive/gha-npm-cache/blob/1d899ca6403e4536a2855679ab78f5b89a870863/src/restore.js#L6-L17
     let output = ''
     const options = {
+      silent: true,
       listeners: {
         stdout: (data: any) => {
           output += data.toString()
@@ -44,7 +45,8 @@ function getCachePath(os: string): string {
   return '~/.cache/coursier'
 }
 
-async function doHashFiles(files: string[]): Promise<string> {
+async function doHashFiles(files0: string[]): Promise<string> {
+  const files = files0.filter(Boolean)
   const hashOptions = {
     files,
     algorithm: 'sha1'
@@ -66,33 +68,32 @@ async function doGlob(globs: string[]): Promise<string[]> {
   })
 }
 
-async function restoreCache(
-  id: string,
-  paths: string[],
+async function hashContent(
   inputFiles: string[],
-  extraKey: string,
-  extraHashedContent: string
-): Promise<void> {
-  const os = await uname()
-
-  const upperId = id.toLocaleUpperCase('en-US')
-
+  hashedContent: string
+): Promise<string> {
   let hash = ''
+  let allInputFiles = inputFiles
 
-  if (extraHashedContent.length === 0) {
-    hash = await doHashFiles(inputFiles)
-  } else {
-    const tmpFilePath = '.tmp-cs-cache-key'
+  const tmpFilePath = '.tmp-cs-cache-key'
+
+  if (hashedContent.length !== 0) {
     const writeTmpFile = new Promise<void>((resolve, reject) => {
-      fs.writeFile(tmpFilePath, extraHashedContent, (err: any) => {
+      writeFile(tmpFilePath, hashedContent, (err: any) => {
         if (err) reject(err)
         else resolve()
       })
     })
     await writeTmpFile
-    hash = await doHashFiles(inputFiles.concat([tmpFilePath]))
+
+    allInputFiles = inputFiles.concat([tmpFilePath])
+  }
+
+  hash = await doHashFiles(allInputFiles)
+
+  if (hashedContent.length !== 0) {
     const removeTmpFile = new Promise<void>((resolve, reject) => {
-      fs.unlink(tmpFilePath, (err: any) => {
+      unlink(tmpFilePath, (err: any) => {
         if (err) reject(err)
         else resolve()
       })
@@ -100,31 +101,87 @@ async function restoreCache(
     await removeTmpFile
   }
 
-  let key = `${os}-${id}-${hash}`
-  const restoreKeys = [`${os}-${id}-`]
+  return hash
+}
+
+async function restoreCache(
+  id: string,
+  paths: string[],
+  inputFiles: string[],
+  job: String,
+  extraSharedKey: string,
+  extraKey: string,
+  matrixHashedContent: string,
+  extraHashedContent: string
+): Promise<void> {
+  const upperId = id.toLocaleUpperCase('en-US')
+
+  let key = id
+  const restoreKeys: string[] = []
+
+  if (job.length > 0) {
+    restoreKeys.push(`${key}-`)
+    key = `${key}-${job}`
+  }
+
+  if (matrixHashedContent.length > 0) {
+    restoreKeys.push(`${key}-`)
+    const matrixHash = await hashContent([], matrixHashedContent)
+    key = `${key}-matrix-${matrixHash}`
+  }
+
+  if (extraSharedKey.length > 0) {
+    restoreKeys.push(`${key}-`)
+    key = `${key}-${extraSharedKey}`
+  }
 
   if (extraKey.length > 0) {
     restoreKeys.push(`${key}-`)
     key = `${key}-${extraKey}`
   }
 
+  if (inputFiles.length > 0 || extraHashedContent.length > 0) {
+    restoreKeys.push(`${key}-`)
+    const hash = await hashContent(inputFiles, extraHashedContent)
+    key = `${key}-${hash}`
+  }
+
+  restoreKeys.reverse()
+
+  core.info(`${id} cache keys:`)
+  core.info(`  ${key}`)
+  for (const restoreKey of restoreKeys) {
+    core.info(`  ${restoreKey}`)
+  }
+
   core.saveState(`${upperId}_CACHE_PATHS`, JSON.stringify(paths))
   core.saveState(`${upperId}_CACHE_KEY`, key)
 
-  const cacheHitKey = await cache.restoreCache(paths, key, restoreKeys)
+  const restoreKey = await cache.restoreCache(paths, key, restoreKeys)
 
-  if (!cacheHitKey) {
-    core.info(`${id} cache not found`)
+  if (!restoreKey) {
+    core.info(`${id} cache not found.`)
+    core.info(`${id} cache will be saved in post run job.`)
     return
   }
 
-  core.info(`${id} cache restored from key ${cacheHitKey}`)
-  core.saveState(`${upperId}_CACHE_RESULT`, cacheHitKey)
+  if (restoreKey === key) {
+    core.info(`${id} cache hit.`)
+    core.info(`${id} cache will not be saved in post run job.`)
+  } else {
+    core.info(`${id} cache miss, fell back on ${restoreKey}.`)
+    core.info(`${id} cache will be saved in post run job.`)
+  }
+  core.info('  ')
+  core.saveState(`${upperId}_CACHE_RESULT`, restoreKey)
 }
 
 async function restoreCoursierCache(
   inputFiles: string[],
+  job: string,
+  extraSharedKey: string,
   extraKey: string,
+  matrixHashedContent: string,
   extraHashedContent: string
 ): Promise<void> {
   let paths: string[] = []
@@ -141,49 +198,70 @@ async function restoreCoursierCache(
     'coursier',
     paths,
     inputFiles,
+    job,
+    extraSharedKey,
     extraKey,
+    matrixHashedContent,
     extraHashedContent
   )
 }
 
 async function restoreSbtCache(
   inputFiles: string[],
+  job: string,
+  extraSharedKey: string,
   extraKey: string,
+  matrixHashedContent: string,
   extraHashedContent: string
 ): Promise<void> {
   await restoreCache(
     'sbt-ivy2-cache',
     ['~/.sbt', '~/.ivy2/cache'],
     inputFiles,
+    job,
+    extraSharedKey,
     extraKey,
+    matrixHashedContent,
     extraHashedContent
   )
 }
 
 async function restoreMillCache(
   inputFiles: string[],
+  job: string,
+  extraSharedKey: string,
   extraKey: string,
+  matrixHashedContent: string,
   extraHashedContent: string
 ): Promise<void> {
   await restoreCache(
     'mill',
     ['~/.mill'],
     inputFiles,
+    job,
+    extraSharedKey,
     extraKey,
+    matrixHashedContent,
     extraHashedContent
   )
 }
 
 async function restoreAmmoniteCache(
   inputFiles: string[],
+  job: string,
+  extraSharedKey: string,
   extraKey: string,
+  matrixHashedContent: string,
   extraHashedContent: string
 ): Promise<void> {
   await restoreCache(
     'ammonite',
     ['~/.ammonite'],
     inputFiles,
+    job,
+    extraSharedKey,
     extraKey,
+    matrixHashedContent,
     extraHashedContent
   )
 }
@@ -213,20 +291,50 @@ async function run(): Promise<void> {
     root = `${root}/`
   }
 
-  const extraFiles = readExtraFiles('extraFiles')
+  let extraFiles = readExtraFiles('extraFiles')
+
+  if (core.getInput('read-cs-cache-files') !== 'false') {
+    const isFilePromise = new Promise<boolean>((resolve, reject) => {
+      stat('.github/cs-cache-files', (err, stats) => {
+        if (err && err.code === 'ENOENT') resolve(false)
+        else if (err) reject(err)
+        else resolve(stats.isFile())
+      })
+    })
+    const isFile = await isFilePromise
+    if (isFile) {
+      const readPromise = new Promise<string>((resolve, reject) => {
+        readFile('.github/cs-cache-files', (err, content) => {
+          if (err) reject(err)
+          else resolve(content.toString())
+        })
+      })
+      const content = await readPromise
+      extraFiles = extraFiles.concat(content.split(/\r?\n/))
+    }
+  }
+
   const extraSbtFiles = readExtraFiles('extraSbtFiles')
   const extraMillFiles = readExtraFiles('extraMillFiles')
   const extraAmmoniteFiles = readExtraFiles('ammoniteScripts')
 
   const extraHashedContent = readExtraKeys('extraHashedContent')
+  const extraCoursierHashedContent = readExtraKeys('extraCoursierHashedContent')
   const extraSbtHashedContent = readExtraKeys('extraSbtHashedContent')
   const extraMillHashedContent = readExtraKeys('extraMillHashedContent')
   const extraAmmoniteHashedContent = readExtraKeys('extraAmmoniteHashedContent')
 
   const extraKey = readExtraKeys('extraKey')
+  const extraCoursierKey = readExtraKeys('extraCoursierKey')
   const extraSbtKey = readExtraKeys('extraSbtKey')
   const extraMillKey = readExtraKeys('extraMillKey')
   const extraAmmoniteKey = readExtraKeys('extraAmmoniteKey')
+
+  const job = readExtraKeys('job')
+  let matrix = readExtraKeys('matrix')
+  if (matrix === 'null' || matrix === 'undefined' || matrix === '{}') {
+    matrix = ''
+  }
 
   const sbtGlobs = [
     `${root}*.sbt`,
@@ -252,41 +360,57 @@ async function run(): Promise<void> {
 
   await restoreCoursierCache(
     sbtGlobs.concat(millGlobs).concat(ammoniteGlobs).concat(extraFiles),
+    job,
     extraKey,
+    extraCoursierKey,
+    matrix,
     JSON.stringify({
       sbt: extraSbtHashedContent,
       mill: extraMillHashedContent,
       amm: extraAmmoniteHashedContent,
-      other: extraHashedContent
+      other: extraHashedContent,
+      coursier: extraCoursierHashedContent
     })
   )
 
   if (hasSbtFiles) {
     await restoreSbtCache(
-      sbtGlobs,
+      sbtGlobs.concat(extraFiles),
+      job,
+      extraKey,
       extraSbtKey,
+      matrix,
       JSON.stringify({
-        sbt: extraSbtHashedContent
+        sbt: extraSbtHashedContent,
+        other: extraHashedContent
       })
     )
   }
 
   if (hasMillFiles) {
     await restoreMillCache(
-      millGlobs,
+      millGlobs.concat(extraFiles),
+      job,
+      extraKey,
       extraMillKey,
+      matrix,
       JSON.stringify({
-        mill: extraMillHashedContent
+        mill: extraMillHashedContent,
+        other: extraHashedContent
       })
     )
   }
 
   if (hasAmmoniteFiles) {
     await restoreAmmoniteCache(
-      ammoniteGlobs,
+      ammoniteGlobs.concat(extraFiles),
+      job,
+      extraKey,
       extraAmmoniteKey,
+      matrix,
       JSON.stringify({
-        amm: extraAmmoniteHashedContent
+        amm: extraAmmoniteHashedContent,
+        other: extraHashedContent
       })
     )
   }

@@ -16,10 +16,15 @@ async function saveCache(id: string): Promise<void> {
     core.getState(`${upperId}_CACHE_PATHS`)
   ) as string[]
 
+  core.info(`${id} cache key:`)
+  core.info(`  ${primaryKey}`)
+  if (cacheKey.length > 0) {
+    core.info(`${id} cache restored from:`)
+    core.info(`  ${cacheKey}`)
+  }
+
   if (cacheKey === primaryKey) {
-    core.info(
-      `Cache hit occurred on key ${primaryKey}, not saving ${id} cache.`
-    )
+    core.info(`${id} cache hit, not saving cache.`)
     return
   }
 
@@ -36,6 +41,7 @@ async function saveCache(id: string): Promise<void> {
       core.info(`[warning] ${error.message}`)
     }
   }
+  core.info('  ')
 }
 
 async function run(): Promise<void> {
