@@ -8,7 +8,7 @@ Add a `coursier/cache-action@v5` step to your YAML workflow, like
 ```yaml
     steps:
       - uses: actions/checkout@v2
-      - uses: coursier/cache-action@v5
+      - uses: coursier/cache-action@v6
 ```
 
 ## Cached directories
