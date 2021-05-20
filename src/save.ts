@@ -55,7 +55,7 @@ async function doRun(): Promise<void> {
   try {
     await run()
   } catch (err) {
-    core.setFailed(err.toString())
+    core.info(`[warning] Caught ${err.message}, ignoring it`)
   }
 }
 
