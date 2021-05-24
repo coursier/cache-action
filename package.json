@@ -24,7 +24,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.2.6",
+    "@actions/core": "^1.3.0",
     "@actions/cache": "^1.0.7",
     "hash-files": "^1.1.1"
   },
