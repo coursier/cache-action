@@ -46,7 +46,7 @@ async function saveCache(id: string): Promise<void> {
 
 // This should catch some EBADF errors seen in the post cache step.
 // Same as https://github.com/actions/cache/blob/0638051e9af2c23d10bb70fa9beffcad6cff9ce3/src/save.ts#L10
-process.on("uncaughtException", e => core.info(`[warning] ${e.message}`));
+process.on('uncaughtException', e => core.info(`[warning] ${e.message}`))
 
 async function run(): Promise<void> {
   await saveCache('coursier')
