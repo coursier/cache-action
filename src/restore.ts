@@ -7,6 +7,10 @@ const hashFiles = require('hash-files')
 
 let _unameValue = ''
 
+// This should catch some ETIMEDOUT errors seen in the restore cache step.
+// Same as https://github.com/actions/cache/blob/0638051e9af2c23d10bb70fa9beffcad6cff9ce3/src/save.ts#L10
+process.on('uncaughtException', e => core.info(`[warning] ${e.message}`))
+
 async function uname(): Promise<string> {
   if (!_unameValue) {
     // from https://github.com/c-hive/gha-npm-cache/blob/1d899ca6403e4536a2855679ab78f5b89a870863/src/restore.js#L6-L17
@@ -157,7 +161,13 @@ async function restoreCache(
   core.saveState(`${upperId}_CACHE_PATHS`, JSON.stringify(paths))
   core.saveState(`${upperId}_CACHE_KEY`, key)
 
-  const restoreKey = await cache.restoreCache(paths, key, restoreKeys)
+  let restoreKey: string | undefined = undefined
+
+  try {
+    restoreKey = await cache.restoreCache(paths, key, restoreKeys)
+  } catch (error) {
+    core.info(`[warning] ${error.message}`)
+  }
 
   if (!restoreKey) {
     core.info(`${id} cache not found.`)
