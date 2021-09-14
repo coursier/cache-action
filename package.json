@@ -29,7 +29,7 @@
     "hash-files": "^1.1.1"
   },
   "devDependencies": {
-    "@typescript-eslint/parser": "^4.28.4",
+    "@typescript-eslint/parser": "^4.31.1",
     "@types/node": "^16.4.3",
     "@zeit/ncc": "^0.22.3",
     "eslint": "^7.31.0",
