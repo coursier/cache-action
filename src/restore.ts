@@ -119,6 +119,7 @@ async function restoreCache(
   extraHashedContent: string
 ): Promise<void> {
   const upperId = id.toLocaleUpperCase('en-US')
+  const cacheHitId = `cache-hit-${id}`
 
   let key = id
   const restoreKeys: string[] = []
@@ -170,15 +171,18 @@ async function restoreCache(
   }
 
   if (!restoreKey) {
+    core.setOutput(cacheHitId, 'false');
     core.info(`${id} cache not found.`)
     core.info(`${id} cache will be saved in post run job.`)
     return
   }
 
   if (restoreKey === key) {
+    core.setOutput(cacheHitId, 'true');
     core.info(`${id} cache hit.`)
     core.info(`${id} cache will not be saved in post run job.`)
   } else {
+    core.setOutput(cacheHitId, 'false');
     core.info(`${id} cache miss, fell back on ${restoreKey}.`)
     core.info(`${id} cache will be saved in post run job.`)
   }
