@@ -109,6 +109,15 @@ inputs:
     description: >
       Extra content to take into account in the Ammonite cache key. Same format as extraHashedContent.
     default: ''
+outputs:
+  cache-hit-coursier:
+    description: 'A boolean value to indicate a match was found for the coursier cache'
+  cache-hit-sbt-ivy2-cache:
+    description: 'A boolean value to indicate a match was found for the sbt-ivy2-cache cache'
+  cache-hit-mill:
+    description: 'A boolean value to indicate a match was found for the mill cache'
+  cache-hit-ammonite:
+    description: 'A boolean value to indicate a match was found for the ammonite cache'
 runs:
   using: 'node12'
   main: 'dist/restore/index.js'

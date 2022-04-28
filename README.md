@@ -7,7 +7,7 @@ A GitHub action to save / restore the coursier / sbt / mill / Ammonite caches of
 Add a `coursier/cache-action@v6` step to your YAML workflow, like
 ```yaml
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: coursier/cache-action@v6
 ```
 
@@ -99,3 +99,31 @@ Extra content to take into account in the cache key.
 See `extraFiles` for more details.
 
 The content of `extraHashedContent` is taken into account in the hash for the coursier cache key.
+
+## Outputs
+
+* `cache-hit-coursier` - A boolean value to indicate a match was found for the coursier cache
+* `cache-hit-sbt-ivy2-cache` - A boolean value to indicate a match was found for the sbt-ivy2-cache cache
+* `cache-hit-mill` - A boolean value to indicate a match was found for the mill cache
+* `cache-hit-ammonite` - A boolean value to indicate a match was found for the ammonite cache
+
+> See [Skipping steps based on cache-hit](#Skipping-steps-based-on-cache-hit) for info on using this output
+
+## Skipping steps based on cache-hit
+
+Using the `cache-hit-...` outputs above, subsequent steps can be skipped when a cache hit occurs on a given key.
+
+Example:
+```yaml
+steps:
+  - uses: actions/checkout@v3
+
+  - uses: coursier/cache-action@v6
+    id: coursier-cache
+
+  - name: Fetch Dependencies
+    if: steps.coursier-cache.outputs.cache-hit-coursier != 'true'
+    run: sbt +update
+```
+
+> Note: The `id` defined in `coursier/cache-action` must match the `id` in the `if` statement (i.e. `steps.[ID].outputs.cache-hit-coursier`)
