@@ -19,7 +19,7 @@ Always cached.
 
 Add files to take into account in its cache key via [`extraFiles`](#extrafiles).
 
-### `~/.sbt`
+### `~/.sbt` and `~/.ivy2/cache`
 
 Cached when sbt files are found (any of `*.sbt`, `project/**.scala`, `project/**.sbt`, `project/build.properties`).
 
