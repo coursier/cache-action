@@ -166,7 +166,7 @@ async function restoreCache(
 
   try {
     restoreKey = await cache.restoreCache(paths, key, restoreKeys)
-  } catch (error) {
+  } catch (error: any) {
     core.info(`[warning] ${error.message}`)
   }
 
@@ -433,7 +433,7 @@ async function run(): Promise<void> {
 async function doRun(): Promise<void> {
   try {
     await run()
-  } catch (err) {
+  } catch (err: any) {
     core.setFailed(err.toString())
   }
 }
