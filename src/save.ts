@@ -32,7 +32,7 @@ async function saveCache(id: string): Promise<void> {
   try {
     core.info(`Saving ${id} cache`)
     await cache.saveCache(cachePaths, primaryKey)
-  } catch (error) {
+  } catch (error: any) {
     if (error.name === 'ValidationError') {
       throw error
     } else if (error.name === 'ReserveCacheError') {
@@ -58,7 +58,7 @@ async function run(): Promise<void> {
 async function doRun(): Promise<void> {
   try {
     await run()
-  } catch (err) {
+  } catch (err: any) {
     core.info(`[warning] Caught ${err.message}, ignoring it`)
   }
 }
