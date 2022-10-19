@@ -32,13 +32,14 @@ async function saveCache(id: string): Promise<void> {
   try {
     core.info(`Saving ${id} cache`)
     await cache.saveCache(cachePaths, primaryKey)
-  } catch (error: any) {
-    if (error.name === 'ValidationError') {
-      throw error
-    } else if (error.name === 'ReserveCacheError') {
-      core.info(error.message)
+  } catch (err: unknown) {
+    if (err instanceof cache.ValidationError) {
+      throw err
+    } else if (err instanceof cache.ReserveCacheError) {
+      core.info(err.message)
     } else {
-      core.info(`[warning] ${error.message}`)
+      const msg = err instanceof Error ? err.message : String(err)
+      core.info(`[warning] ${msg}`)
     }
   }
   core.info('  ')
@@ -58,8 +59,9 @@ async function run(): Promise<void> {
 async function doRun(): Promise<void> {
   try {
     await run()
-  } catch (err: any) {
-    core.info(`[warning] Caught ${err.message}, ignoring it`)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    core.info(`[warning] Caught ${msg}, ignoring it`)
   }
 }
 

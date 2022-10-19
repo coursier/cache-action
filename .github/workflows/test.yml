@@ -13,13 +13,18 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v3
-      - run: |
+
+      - name: Build
+        shell: bash -l {0}
+        run: |
+          nvm use lts/gallium
           npm install
-      - run: |
           npm run all
+
       - uses: ./
         with:
           root: test
           extraFiles: test/foo.sh # for the ammonite-runner version
+
       - run: cd test && ./sbt compile && ./foo.sh
         shell: bash

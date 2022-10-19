@@ -2,8 +2,8 @@ import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import {readFile, stat, unlink, writeFile} from 'fs'
-const glob = require('glob-all')
-const hashFiles = require('hash-files')
+import globAll from 'glob-all'
+import hashFiles from 'hash-files'
 
 let _unameValue = ''
 
@@ -18,8 +18,8 @@ async function uname(): Promise<string> {
     const options = {
       silent: true,
       listeners: {
-        stdout: (data: any) => {
-          output += data.toString()
+        stdout: (data: unknown) => {
+          output += String(data)
         }
       }
     }
@@ -56,18 +56,18 @@ async function doHashFiles(files0: string[]): Promise<string> {
     algorithm: 'sha1'
   }
   return new Promise<string>((resolve, reject) => {
-    hashFiles(hashOptions, (error: any, hash: string) => {
+    hashFiles(hashOptions, (err: Error | null, hash: string) => {
       if (hash) resolve(hash)
-      else reject(error)
+      else reject(err)
     })
   })
 }
 
 async function doGlob(globs: string[]): Promise<string[]> {
   return new Promise<string[]>((resolve, reject) => {
-    glob(globs, (error: any, files: string[]) => {
+    globAll(globs, (err: Error | null, files: string[]) => {
       if (files) resolve(files)
-      else reject(error)
+      else reject(err)
     })
   })
 }
@@ -83,7 +83,7 @@ async function hashContent(
 
   if (hashedContent.length !== 0) {
     const writeTmpFile = new Promise<void>((resolve, reject) => {
-      writeFile(tmpFilePath, hashedContent, (err: any) => {
+      writeFile(tmpFilePath, hashedContent, (err: Error | null) => {
         if (err) reject(err)
         else resolve()
       })
@@ -97,7 +97,7 @@ async function hashContent(
 
   if (hashedContent.length !== 0) {
     const removeTmpFile = new Promise<void>((resolve, reject) => {
-      unlink(tmpFilePath, (err: any) => {
+      unlink(tmpFilePath, (err: Error | null) => {
         if (err) reject(err)
         else resolve()
       })
@@ -166,8 +166,9 @@ async function restoreCache(
 
   try {
     restoreKey = await cache.restoreCache(paths, key, restoreKeys)
-  } catch (error: any) {
-    core.info(`[warning] ${error.message}`)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    core.info(`[warning] ${msg}`)
   }
 
   if (!restoreKey) {
@@ -433,8 +434,9 @@ async function run(): Promise<void> {
 async function doRun(): Promise<void> {
   try {
     await run()
-  } catch (err: any) {
-    core.setFailed(err.toString())
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    core.setFailed(msg)
   }
 }
 

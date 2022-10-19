@@ -119,7 +119,7 @@ outputs:
   cache-hit-ammonite:
     description: 'A boolean value to indicate a match was found for the ammonite cache'
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'dist/restore/index.js'
   post: 'dist/save/index.js'
   post-if: 'success()'
