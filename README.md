@@ -25,7 +25,7 @@ Cached when sbt files are found (any of `*.sbt`, `project/**.scala`, `project/**
 
 Add files to take into account in its cache key via [`extraSbtFiles`](#extrasbtfiles).
 
-### `~/.mill`
+### `~/.cache/mill`
 
 Cached when mill files are found (any of `.mill-version`, `./mill`).
 
