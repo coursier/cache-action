@@ -251,7 +251,7 @@ async function restoreMillCache(
 ): Promise<void> {
   await restoreCache(
     'mill',
-    ['~/.mill'],
+    ['~/.cache/mill'],
     inputFiles,
     job,
     extraSharedKey,
