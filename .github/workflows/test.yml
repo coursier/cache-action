@@ -16,6 +16,8 @@ jobs:
 
       - name: Build
         shell: bash -l {0}
+        env:
+          NODE_OPTIONS: "--openssl-legacy-provider"
         run: |
           nvm use lts/gallium
           npm install
