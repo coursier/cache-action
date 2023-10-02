@@ -8,6 +8,7 @@ on:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
@@ -16,8 +17,10 @@ jobs:
 
       - name: Build
         shell: bash -l {0}
+        env:
+          NODE_OPTIONS: "--openssl-legacy-provider"
         run: |
-          nvm use lts/gallium
+          nvm use lts/hydrogen
           npm install
           npm run all
 
