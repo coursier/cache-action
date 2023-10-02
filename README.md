@@ -100,6 +100,22 @@ See `extraFiles` for more details.
 
 The content of `extraHashedContent` is taken into account in the hash for the coursier cache key.
 
+### `ignoreJob`
+
+*Optional*
+
+Default: `false`
+
+Set `true` if you don't want to use a job id as part of cache key.
+
+### `ignoreMatrix`
+
+*Optional*
+
+Default: `false`
+
+Set `true` if you don't want to use a matrix jobs as part of cache key.
+
 ## Outputs
 
 * `cache-hit-coursier` - A boolean value to indicate a match was found for the coursier cache

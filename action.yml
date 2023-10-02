@@ -109,6 +109,16 @@ inputs:
     description: >
       Extra content to take into account in the Ammonite cache key. Same format as extraHashedContent.
     default: ''
+  ignoreJob:
+    required: false
+    description: >
+      Set 'true' if you don't want to use a job id as part of cache key.
+    default: 'false'
+  ignoreMatrix:
+    required: false
+    description: >
+      Set 'true' if you don't want to use a matrix jobs as part of cache key.
+    default: 'false'
 outputs:
   cache-hit-coursier:
     description: 'A boolean value to indicate a match was found for the coursier cache'
