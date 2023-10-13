@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@typescript-eslint/parser": "^5.48.0",
-    "@types/node": "^20.8.0",
+    "@types/node": "^20.8.5",
     "@zeit/ncc": "^0.22.3",
     "eslint": "^8.50.0",
     "eslint-plugin-github": "^4.6.0",
