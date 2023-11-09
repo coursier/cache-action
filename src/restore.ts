@@ -300,6 +300,10 @@ function readExtraKeys(variableName: string): string {
   return extraFilesStr
 }
 
+function readExtraBoolean(variableName: string): boolean {
+  return core.getBooleanInput(variableName, {required: false})
+}
+
 async function run(): Promise<void> {
   let root = core.getInput('root')
   if (!root.endsWith('/')) {
@@ -345,9 +349,17 @@ async function run(): Promise<void> {
   const extraMillKey = readExtraKeys('extraMillKey')
   const extraAmmoniteKey = readExtraKeys('extraAmmoniteKey')
 
-  const job = readExtraKeys('job')
+  const ignoreJobAsPartCacheKey = readExtraBoolean('ignoreJob')
+  const ignoreMatrixAsPartCacheKey = readExtraBoolean('ignoreMatrix')
+
+  const job = ignoreJobAsPartCacheKey ? '' : readExtraKeys('job')
   let matrix = readExtraKeys('matrix')
-  if (matrix === 'null' || matrix === 'undefined' || matrix === '{}') {
+  if (
+    matrix === 'null' ||
+    matrix === 'undefined' ||
+    matrix === '{}' ||
+    ignoreMatrixAsPartCacheKey
+  ) {
     matrix = ''
   }
 
