@@ -46,7 +46,7 @@ inputs:
       To take into account extra files in the cache key, pass via extraFiles either
       - a single path as a string
       - multiple paths in a JSON array, encoded in a string
-      Blobs are accepted (processed by [glob-all](https://www.npmjs.com/package/glob-all)).
+      Blobs are accepted (processed by [@actions/glob](https://www.npmjs.com/package/@actions/glob)).
     default: ''
   extraKey:
     required: false
@@ -129,7 +129,7 @@ outputs:
   cache-hit-ammonite:
     description: 'A boolean value to indicate a match was found for the ammonite cache'
 runs:
-  using: 'node16'
+  using: 'node20'
   main: 'dist/restore/index.js'
   post: 'dist/save/index.js'
   post-if: 'success()'

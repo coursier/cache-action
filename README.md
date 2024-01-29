@@ -68,7 +68,7 @@ To take into account extra files in the cache key, pass via `extraFiles` either
 - a single path as a string
 - multiple paths in a JSON array, encoded in a string
 
-Blobs are accepted (processed by [glob-all](https://www.npmjs.com/package/glob-all)).
+Blobs are accepted (processed by [@actions/glob](https://www.npmjs.com/package/@actions/glob)).
 
 ### `extraSbtFiles`
 
