@@ -22,7 +22,7 @@ jobs:
         shell: bash -l {0}
         run: |
           npm ci
-          npm format-check || ( npm format && false )
+          npm format-check || ( npm format && git diff && false )
           npm run all
 
       - uses: ./
