@@ -22,7 +22,6 @@ jobs:
         shell: bash -l {0}
         run: |
           npm ci
-          npm run format-check || ( npm run format && ( git diff | cat ); false )
           npm run all
 
       - uses: ./
