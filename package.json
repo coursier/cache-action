@@ -10,7 +10,7 @@
     "format-check": "prettier --check **/*.ts",
     "lint": "eslint src/**/*.ts",
     "test": "echo 'No test framework configured'",
-    "all": "npm run build && npm run format && npm run lint && npm test"
+    "all": "npm run build && npm run format-check && npm run lint && npm test"
   },
   "repository": {
     "type": "git",
@@ -24,18 +24,19 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.10.0",
     "@actions/cache": "^3.2.2",
-    "hash-files": "^1.1.1"
+    "@actions/core": "^1.10.0",
+    "@actions/glob": "^0.4.0"
   },
   "devDependencies": {
-    "@typescript-eslint/parser": "^5.48.0",
     "@types/node": "^20.9.0",
-    "@zeit/ncc": "^0.22.3",
+    "@typescript-eslint/eslint-plugin": "^6.19.1",
+    "@typescript-eslint/parser": "^6.19.1",
+    "@vercel/ncc": "^0.38.1",
     "eslint": "^8.50.0",
-    "eslint-plugin-github": "^4.6.0",
+    "eslint-plugin-github": "^4.10.1",
     "js-yaml": "^4.1.0",
-    "prettier": "2.8.2",
+    "prettier": "^3.2.4",
     "typescript": "^4.9.4"
   }
 }

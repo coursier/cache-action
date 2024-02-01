@@ -14,14 +14,15 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
       - name: Build
         shell: bash -l {0}
-        env:
-          NODE_OPTIONS: "--openssl-legacy-provider"
         run: |
-          nvm use lts/hydrogen
-          npm install
+          npm ci
+          test "$OSTYPE" != "msys" || npm run format
           npm run all
 
       - uses: ./

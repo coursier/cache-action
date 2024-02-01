@@ -1,10 +1,9 @@
 import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
-import {readFile, stat, unlink, writeFile} from 'fs'
-import globAll from 'glob-all'
-import hashFiles from 'hash-files'
-
+import * as glob from '@actions/glob'
+import {stat} from 'fs'
+import {readFile, unlink, writeFile} from 'fs/promises'
 let _unameValue = ''
 
 // This should catch some ETIMEDOUT errors seen in the restore cache step.
@@ -49,27 +48,13 @@ function getCachePath(os: string): string {
   return '~/.cache/coursier'
 }
 
-async function doHashFiles(files0: string[]): Promise<string> {
-  const files = files0.filter(Boolean)
-  const hashOptions = {
-    files,
-    algorithm: 'sha1'
-  }
-  return new Promise<string>((resolve, reject) => {
-    hashFiles(hashOptions, (err: Error | null, hash: string) => {
-      if (hash) resolve(hash)
-      else reject(err)
-    })
-  })
+async function doHashFiles(files: string[]): Promise<string> {
+  return glob.hashFiles(files.filter(Boolean).join('\n'))
 }
 
 async function doGlob(globs: string[]): Promise<string[]> {
-  return new Promise<string[]>((resolve, reject) => {
-    globAll(globs, (err: Error | null, files: string[]) => {
-      if (files) resolve(files)
-      else reject(err)
-    })
-  })
+  const globber = await glob.create(globs.join('\n'))
+  return globber.glob()
 }
 
 async function hashContent(
@@ -82,13 +67,7 @@ async function hashContent(
   const tmpFilePath = '.tmp-cs-cache-key'
 
   if (hashedContent.length !== 0) {
-    const writeTmpFile = new Promise<void>((resolve, reject) => {
-      writeFile(tmpFilePath, hashedContent, (err: Error | null) => {
-        if (err) reject(err)
-        else resolve()
-      })
-    })
-    await writeTmpFile
+    await writeFile(tmpFilePath, hashedContent)
 
     allInputFiles = inputFiles.concat([tmpFilePath])
   }
@@ -96,13 +75,7 @@ async function hashContent(
   hash = await doHashFiles(allInputFiles)
 
   if (hashedContent.length !== 0) {
-    const removeTmpFile = new Promise<void>((resolve, reject) => {
-      unlink(tmpFilePath, (err: Error | null) => {
-        if (err) reject(err)
-        else resolve()
-      })
-    })
-    await removeTmpFile
+    await unlink(tmpFilePath)
   }
 
   return hash
@@ -112,7 +85,7 @@ async function restoreCache(
   id: string,
   paths: string[],
   inputFiles: string[],
-  job: String,
+  job: string,
   extraSharedKey: string,
   extraKey: string,
   matrixHashedContent: string,
@@ -322,13 +295,7 @@ async function run(): Promise<void> {
     })
     const isFile = await isFilePromise
     if (isFile) {
-      const readPromise = new Promise<string>((resolve, reject) => {
-        readFile('.github/cs-cache-files', (err, content) => {
-          if (err) reject(err)
-          else resolve(content.toString())
-        })
-      })
-      const content = await readPromise
+      const content = (await readFile('.github/cs-cache-files')).toString()
       extraFiles = extraFiles.concat(content.split(/\r?\n/))
     }
   }
@@ -381,9 +348,14 @@ async function run(): Promise<void> {
     extraAmmoniteFiles
   )
 
-  const hasSbtFiles = (await doGlob(sbtGlobs)).length > 0
-  const hasMillFiles = (await doGlob(millSpecificGlobs)).length > 0
-  const hasAmmoniteFiles = (await doGlob(ammoniteGlobs)).length > 0
+  const [hasSbtFiles, hasMillFiles, hasAmmoniteFiles] = await Promise.all([
+    // eslint-disable-next-line github/no-then
+    doGlob(sbtGlobs).then(files => files.length > 0),
+    // eslint-disable-next-line github/no-then
+    doGlob(millSpecificGlobs).then(files => files.length > 0),
+    // eslint-disable-next-line github/no-then
+    doGlob(ammoniteGlobs).then(files => files.length > 0)
+  ])
 
   await restoreCoursierCache(
     sbtGlobs.concat(millGlobs).concat(ammoniteGlobs).concat(extraFiles),

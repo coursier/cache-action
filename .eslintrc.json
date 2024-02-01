@@ -1,6 +1,6 @@
 {
     "plugins": ["@typescript-eslint"],
-    "extends": ["plugin:github/recommended"],
+    "extends": ["plugin:github/typescript"],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
       "ecmaVersion": 9,
@@ -45,7 +45,6 @@
       "@typescript-eslint/semi": ["error", "never"],
       "@typescript-eslint/type-annotation-spacing": "error",
       "@typescript-eslint/unbound-method": "error",
-      "import/no-commonjs": "warn",
       "i18n-text/no-en": "off"
     },
     "env": {
