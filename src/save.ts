@@ -63,6 +63,11 @@ async function doRun(): Promise<void> {
     const msg = err instanceof Error ? err.message : String(err)
     core.info(`[warning] Caught ${msg}, ignoring it`)
   }
+
+  // Explicit termination to make sure we don't hang with some dangling promises.
+  // Same as https://github.com/actions/cache/blob/0c45773b623bea8c8e75f6c82b208c3cf94ea4f9/src/saveImpl.ts#L116-L123
+  core.info('All caches saved')
+  process.exit(0)
 }
 
 doRun()
