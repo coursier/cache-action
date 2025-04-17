@@ -28,7 +28,12 @@ jobs:
       - uses: ./
         with:
           root: test
-          extraFiles: test/foo.sh # for the ammonite-runner version
+          extraFiles: test/foo.sh # for the ammonite version?
 
-      - run: cd test && eval "$(./cs java --env --jvm 17)" && ./mill __.compile && ./foo.sh
+      - run: cd test && eval "$(./cs java --env --jvm 17)" && ./mill -i __.compile && ./foo.sh
+        if: runner.os != 'Windows'
+        shell: bash
+
+      - run: cd test && eval "$(./cs java --env --jvm 17)" && cmd /c "mill.bat -i __.compile" && ./foo.sh
+        if: runner.os == 'Windows'
         shell: bash
