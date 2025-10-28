@@ -7,8 +7,8 @@ A GitHub action to save / restore the coursier / sbt / mill / Ammonite caches of
 Add a `coursier/cache-action@v6` step to your YAML workflow, like
 ```yaml
     steps:
-      - uses: actions/checkout@v4
-      - uses: coursier/cache-action@v6
+      - uses: actions/checkout@v5
+      - uses: coursier/cache-action@v7
 ```
 
 ## Cached directories
@@ -132,9 +132,9 @@ Using the `cache-hit-...` outputs above, subsequent steps can be skipped when a 
 Example:
 ```yaml
 steps:
-  - uses: actions/checkout@v3
+  - uses: actions/checkout@v5
 
-  - uses: coursier/cache-action@v6
+  - uses: coursier/cache-action@v7
     id: coursier-cache
 
   - name: Fetch Dependencies
