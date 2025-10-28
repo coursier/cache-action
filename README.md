@@ -4,7 +4,7 @@ A GitHub action to save / restore the coursier / sbt / mill / Ammonite caches of
 
 ## Usage
 
-Add a `coursier/cache-action@v6` step to your YAML workflow, like
+Add a `coursier/cache-action@v7` step to your YAML workflow, like
 ```yaml
     steps:
       - uses: actions/checkout@v5
