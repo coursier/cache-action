@@ -116,6 +116,14 @@ Default: `false`
 
 Set `true` if you don't want to use a matrix jobs as part of cache key.
 
+### `ignoreAmmonite`
+
+*Optional*
+
+Default: `false`
+
+Set `true` to skip saving and restoring the Ammonite cache, regardless of whether the repository contains `.sc` scripts.
+
 ## Outputs
 
 * `cache-hit-coursier` - A boolean value to indicate a match was found for the coursier cache
