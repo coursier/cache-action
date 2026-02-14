@@ -8,7 +8,7 @@ inputs:
   root:
     required: false
     description: >
-      Root directory containing build definition sources (build.sbt, build.sc, etc.)
+      Root directory containing build definition sources (build.sbt, build.mill, etc.)
       If the sbt or mill build definition files are in a sub-directory, pass the path to this
       sub-directory here.
     default: '.'
@@ -39,7 +39,7 @@ inputs:
     description: >
       Extra files to take into account in the cache key.
       By default, sbt build definition files (*.sbt, project/**.{scala,sbt}, project/build.properties) and
-      mill build definition files (*.sc, ./mill) are hashed to uniquely identify the cached data. Upon
+      mill build definition files (*.mill, ./mill) are hashed to uniquely identify the cached data. Upon
       cache restoration, if an exact match is found, the cache is not saved again at the end of the job.
       In case of no exact match, it is assumed new files may have been fetched; the previous cache for the
       current OS, if any, is restored, but a new cache is persisted with a new key at the end of the job.
