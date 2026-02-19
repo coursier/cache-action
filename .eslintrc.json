@@ -1,6 +1,6 @@
 {
-    "plugins": ["@typescript-eslint"],
-    "extends": ["plugin:github/typescript"],
+    "plugins": ["@typescript-eslint", "@stylistic/ts"],
+    "extends": ["plugin:@typescript-eslint/recommended"],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
       "ecmaVersion": 9,
@@ -8,8 +8,6 @@
       "project": "./tsconfig.json"
     },
     "rules": {
-      "eslint-comments/no-use": "off",
-      "import/no-namespace": "off",
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "error",
       "@typescript-eslint/explicit-member-accessibility": ["error", {"accessibility": "no-public"}],
@@ -41,9 +39,10 @@
       "@typescript-eslint/promise-function-async": "error",
       "@typescript-eslint/require-array-sort-compare": "error",
       "@typescript-eslint/restrict-plus-operands": "error",
-      "semi": ["error", "never"],
-      "@typescript-eslint/unbound-method": "error",
-      "i18n-text/no-en": "off"
+      "semi": "off",
+      "@stylistic/ts/semi": ["error", "never"],
+      "@stylistic/ts/type-annotation-spacing": "error",
+      "@typescript-eslint/unbound-method": "error"
     },
     "env": {
       "node": true,
