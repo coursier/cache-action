@@ -1,5 +1,5 @@
 {
-    "plugins": ["@typescript-eslint"],
+    "plugins": ["@typescript-eslint", "@stylistic/ts"],
     "extends": ["plugin:@typescript-eslint/recommended"],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
@@ -39,6 +39,9 @@
       "@typescript-eslint/promise-function-async": "error",
       "@typescript-eslint/require-array-sort-compare": "error",
       "@typescript-eslint/restrict-plus-operands": "error",
+      "semi": "off",
+      "@stylistic/ts/semi": ["error", "never"],
+      "@stylistic/ts/type-annotation-spacing": "error",
       "@typescript-eslint/unbound-method": "error"
     },
     "env": {
