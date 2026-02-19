@@ -318,6 +318,7 @@ async function run(): Promise<void> {
 
   const ignoreJobAsPartCacheKey = readExtraBoolean('ignoreJob')
   const ignoreMatrixAsPartCacheKey = readExtraBoolean('ignoreMatrix')
+  const ignoreAmmonite = readExtraBoolean('ignoreAmmonite')
 
   const job = ignoreJobAsPartCacheKey ? '' : readExtraKeys('job')
   let matrix = readExtraKeys('matrix')
@@ -340,7 +341,9 @@ async function run(): Promise<void> {
   const millSpecificGlobs = [`${root}.mill-version`, `${root}mill`].concat(
     extraMillFiles
   )
-  const millGlobs = [`${root}*.sc`]
+  const millLegacyGlobs = [`${root}*.sc`, `${root}*.mill.scala`]
+  const millGlobs = [`${root}*.mill`, `${root}*.mill.yaml`]
+    .concat(millLegacyGlobs)
     .concat(millSpecificGlobs)
     .concat(extraMillFiles)
 
@@ -357,19 +360,28 @@ async function run(): Promise<void> {
     doGlob(ammoniteGlobs).then(files => files.length > 0)
   ])
 
+  const coursierInputFiles = sbtGlobs
+    .concat(millGlobs)
+    .concat(ignoreAmmonite ? [] : ammoniteGlobs)
+    .concat(extraFiles)
+
+  const coursierHashedContent: Record<string, string> = {
+    sbt: extraSbtHashedContent,
+    mill: extraMillHashedContent,
+    other: extraHashedContent,
+    coursier: extraCoursierHashedContent
+  }
+  if (!ignoreAmmonite) {
+    coursierHashedContent.amm = extraAmmoniteHashedContent
+  }
+
   await restoreCoursierCache(
-    sbtGlobs.concat(millGlobs).concat(ammoniteGlobs).concat(extraFiles),
+    coursierInputFiles,
     job,
     extraKey,
     extraCoursierKey,
     matrix,
-    JSON.stringify({
-      sbt: extraSbtHashedContent,
-      mill: extraMillHashedContent,
-      amm: extraAmmoniteHashedContent,
-      other: extraHashedContent,
-      coursier: extraCoursierHashedContent
-    })
+    JSON.stringify(coursierHashedContent)
   )
 
   if (hasSbtFiles) {
@@ -400,7 +412,15 @@ async function run(): Promise<void> {
     )
   }
 
-  if (hasAmmoniteFiles) {
+  if (ignoreAmmonite && hasAmmoniteFiles) {
+    core.info(
+      'Ammonite scripts found but ignoreAmmonite is set — skipping Ammonite cache.'
+    )
+  } else if (ignoreAmmonite && !hasAmmoniteFiles) {
+    core.info(
+      'ignoreAmmonite is set but no Ammonite scripts were found — nothing to skip.'
+    )
+  } else if (hasAmmoniteFiles) {
     await restoreAmmoniteCache(
       ammoniteGlobs.concat(extraFiles),
       job,
