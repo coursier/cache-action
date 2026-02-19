@@ -352,11 +352,8 @@ async function run(): Promise<void> {
   )
 
   const [hasSbtFiles, hasMillFiles, hasAmmoniteFiles] = await Promise.all([
-    // eslint-disable-next-line github/no-then
     doGlob(sbtGlobs).then(files => files.length > 0),
-    // eslint-disable-next-line github/no-then
     doGlob(millSpecificGlobs).then(files => files.length > 0),
-    // eslint-disable-next-line github/no-then
     doGlob(ammoniteGlobs).then(files => files.length > 0)
   ])
 
