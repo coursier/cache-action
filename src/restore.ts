@@ -340,7 +340,9 @@ async function run(): Promise<void> {
   const millSpecificGlobs = [`${root}.mill-version`, `${root}mill`].concat(
     extraMillFiles
   )
-  const millGlobs = [`${root}*.sc`]
+  const millLegacyGlobs = [`${root}*.sc`, `${root}*.mill.scala`]
+  const millGlobs = [`${root}*.mill`, `${root}*.mill.yaml`]
+    .concat(millLegacyGlobs)
     .concat(millSpecificGlobs)
     .concat(extraMillFiles)
 
