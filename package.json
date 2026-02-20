@@ -27,7 +27,8 @@
   "dependencies": {
     "@actions/cache": "^6.0.0",
     "@actions/core": "^3.0.0",
-    "@actions/glob": "^0.5.0"
+    "@actions/exec": "^3.0.0",
+    "@actions/glob": "^0.6.1"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin-ts": "^3.1.0",
