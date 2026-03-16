@@ -310,6 +310,18 @@ async function run(): Promise<void> {
   const extraMillHashedContent = readExtraKeys('extraMillHashedContent')
   const extraAmmoniteHashedContent = readExtraKeys('extraAmmoniteHashedContent')
 
+  const cacheVersion = process.env['COURSIER_CACHE_VERSION'] ?? ''
+  if (cacheVersion.length > 0) {
+    core.info(
+      `Cache invalidation: COURSIER_CACHE_VERSION is set to '${cacheVersion}', appending to all cache keys.`
+    )
+  }
+
+  const effectiveExtraHashedContent =
+    cacheVersion.length > 0
+      ? `${extraHashedContent}\n${cacheVersion}`
+      : extraHashedContent
+
   const extraKey = readExtraKeys('extraKey')
   const extraCoursierKey = readExtraKeys('extraCoursierKey')
   const extraSbtKey = readExtraKeys('extraSbtKey')
@@ -365,7 +377,7 @@ async function run(): Promise<void> {
   const coursierHashedContent: Record<string, string> = {
     sbt: extraSbtHashedContent,
     mill: extraMillHashedContent,
-    other: extraHashedContent,
+    other: effectiveExtraHashedContent,
     coursier: extraCoursierHashedContent
   }
   if (!ignoreAmmonite) {
@@ -390,7 +402,7 @@ async function run(): Promise<void> {
       matrix,
       JSON.stringify({
         sbt: extraSbtHashedContent,
-        other: extraHashedContent
+        other: effectiveExtraHashedContent
       })
     )
   }
@@ -404,7 +416,7 @@ async function run(): Promise<void> {
       matrix,
       JSON.stringify({
         mill: extraMillHashedContent,
-        other: extraHashedContent
+        other: effectiveExtraHashedContent
       })
     )
   }
@@ -426,7 +438,7 @@ async function run(): Promise<void> {
       matrix,
       JSON.stringify({
         amm: extraAmmoniteHashedContent,
-        other: extraHashedContent
+        other: effectiveExtraHashedContent
       })
     )
   }
