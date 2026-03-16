@@ -126,13 +126,13 @@ Set `true` to skip saving and restoring the Ammonite cache, regardless of whethe
 
 ## Cache invalidation
 
-To manually invalidate the cache without changing your build files, set the `COURSIER_CACHE_VERSION`
+To manually invalidate the cache without changing your build files, set the `COURSIER_CACHE_ACTION_CACHE_VERSION`
 environment variable in your workflow. Changing its value produces a different cache key across all
 cache types, so the old cache is ignored and a fresh one is created.
 
 ```yaml
 env:
-  COURSIER_CACHE_VERSION: 1   # increment this value to invalidate the cache
+  COURSIER_CACHE_ACTION_CACHE_VERSION: 1   # increment this value to invalidate the cache
 
 steps:
   - uses: actions/checkout@v5

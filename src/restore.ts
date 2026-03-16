@@ -310,10 +310,10 @@ async function run(): Promise<void> {
   const extraMillHashedContent = readExtraKeys('extraMillHashedContent')
   const extraAmmoniteHashedContent = readExtraKeys('extraAmmoniteHashedContent')
 
-  const cacheVersion = process.env['COURSIER_CACHE_VERSION'] ?? ''
+  const cacheVersion = process.env['COURSIER_CACHE_ACTION_CACHE_VERSION'] ?? ''
   if (cacheVersion.length > 0) {
     core.info(
-      `Cache invalidation: COURSIER_CACHE_VERSION is set to '${cacheVersion}', appending to all cache keys.`
+      `Cache invalidation: COURSIER_CACHE_ACTION_CACHE_VERSION is set to '${cacheVersion}', appending to all cache keys.`
     )
   }
 
