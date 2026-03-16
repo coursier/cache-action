@@ -130,6 +130,8 @@ To manually invalidate the cache without changing your build files, set the `COU
 environment variable in your workflow. Changing its value produces a different cache key across all
 cache types, so the old cache is ignored and a fresh one is created.
 
+The variable can be set at the workflow level so that it applies to every step:
+
 ```yaml
 env:
   COURSIER_CACHE_ACTION_CACHE_VERSION: 1   # increment this value to invalidate the cache
@@ -137,6 +139,16 @@ env:
 steps:
   - uses: actions/checkout@v5
   - uses: coursier/cache-action@v7
+```
+
+Or it can be scoped to only the `coursier/cache-action` step:
+
+```yaml
+steps:
+  - uses: actions/checkout@v5
+  - uses: coursier/cache-action@v7
+    env:
+      COURSIER_CACHE_ACTION_CACHE_VERSION: 1   # increment this value to invalidate the cache
 ```
 
 This is equivalent to passing the version as `extraHashedContent`, but more convenient because it
