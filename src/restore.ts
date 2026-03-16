@@ -127,7 +127,7 @@ async function restoreCache(
 
   restoreKeys.reverse()
 
-  core.info(`${id} cache keys:`)
+  core.info(`${id} cache keys${disableFallback ? " (fallback disabled)" : ""}:`)
   core.info(`  ${key}`)
   for (const restoreKey of restoreKeys) {
     core.info(`  ${restoreKey}`)
