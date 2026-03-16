@@ -2,6 +2,8 @@
 
 import * as cache from '@actions/cache'
 import * as core from '@actions/core'
+import * as glob from '@actions/glob'
+import {unlink} from 'fs/promises'
 
 async function saveCache(id: string): Promise<void> {
   const upperId = id.toLocaleUpperCase('en-US')
@@ -45,12 +47,31 @@ async function saveCache(id: string): Promise<void> {
   core.info('  ')
 }
 
+async function deleteGlobMatches(pattern: string): Promise<void> {
+  const globber = await glob.create(pattern)
+  for (const f of await globber.glob()) {
+    try {
+      await unlink(f)
+    } catch {
+      // ignore errors (e.g. file already deleted or permission issues)
+    }
+  }
+}
+
+async function cleanupSbtIvy2Cache(): Promise<void> {
+  // Delete these files to avoid unnecessary cache updates — they are
+  // regenerated on every build and should not be part of the cached archive.
+  await deleteGlobMatches('~/.ivy2/cache/**/ivydata-*.properties')
+  await deleteGlobMatches('~/.sbt/**/*.lock')
+}
+
 // This should catch some EBADF errors seen in the post cache step.
 // Same as https://github.com/actions/cache/blob/0638051e9af2c23d10bb70fa9beffcad6cff9ce3/src/save.ts#L10
 process.on('uncaughtException', e => core.info(`[warning] ${e.message}`))
 
 async function run(): Promise<void> {
   await saveCache('coursier')
+  await cleanupSbtIvy2Cache()
   await saveCache('sbt-ivy2-cache')
   await saveCache('mill')
   await saveCache('ammonite')
