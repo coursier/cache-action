@@ -28,7 +28,9 @@
     "@actions/cache": "^6.0.0",
     "@actions/core": "^3.0.0",
     "@actions/exec": "^3.0.0",
-    "@actions/glob": "^0.6.1"
+    "@actions/glob": "^0.6.1",
+    "@aws-sdk/client-s3": "^3.1010.0",
+    "@aws-sdk/lib-storage": "^3.1010.0"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin-ts": "^4.4.1",

@@ -134,6 +134,45 @@ inputs:
       prevents unintended cache sharing across jobs or matrix instances that have different
       dependency sets.
     default: 'false'
+  s3-bucket:
+    required: false
+    description: >
+      Name of the S3 bucket to use as the caching backend.
+      When set, the action stores and retrieves caches from this S3 bucket instead of
+      the default GitHub Actions cache. This is useful for self-hosted runners where
+      you want to use a local S3-compatible store (e.g. MinIO) for speed or governance.
+    default: ''
+  s3-endpoint:
+    required: false
+    description: >
+      Custom S3 endpoint URL. Use this to point to an S3-compatible service such as
+      MinIO (e.g. http://minio:9000). Leave empty to use the default AWS S3 endpoint.
+    default: ''
+  s3-region:
+    required: false
+    description: >
+      AWS region for the S3 bucket. Defaults to 'us-east-1'.
+    default: 'us-east-1'
+  s3-access-key-id:
+    required: false
+    description: >
+      AWS access key ID for authenticating with S3.
+      If not set, the AWS SDK will fall back to the default credential chain
+      (environment variables, instance profile, etc.).
+    default: ''
+  s3-secret-access-key:
+    required: false
+    description: >
+      AWS secret access key for authenticating with S3.
+      If not set, the AWS SDK will fall back to the default credential chain.
+    default: ''
+  s3-path-style:
+    required: false
+    description: >
+      Set 'true' to force path-style addressing for S3 requests
+      (e.g. http://minio:9000/bucket/key instead of http://bucket.minio:9000/key).
+      Required for MinIO and most S3-compatible self-hosted services.
+    default: 'false'
 outputs:
   cache-hit-coursier:
     description: 'A boolean value to indicate a match was found for the coursier cache'
