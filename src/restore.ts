@@ -89,7 +89,8 @@ async function restoreCache(
   extraSharedKey: string,
   extraKey: string,
   matrixHashedContent: string,
-  extraHashedContent: string
+  extraHashedContent: string,
+  disableFallback: boolean
 ): Promise<void> {
   const upperId = id.toLocaleUpperCase('en-US')
   const cacheHitId = `cache-hit-${id}`
@@ -126,7 +127,7 @@ async function restoreCache(
 
   restoreKeys.reverse()
 
-  core.info(`${id} cache keys:`)
+  core.info(`${id} cache keys${disableFallback ? ' (fallback disabled)' : ''}:`)
   core.info(`  ${key}`)
   for (const restoreKey of restoreKeys) {
     core.info(`  ${restoreKey}`)
@@ -138,7 +139,11 @@ async function restoreCache(
   let restoreKey: string | undefined = undefined
 
   try {
-    restoreKey = await cache.restoreCache(paths, key, restoreKeys)
+    restoreKey = await cache.restoreCache(
+      paths,
+      key,
+      disableFallback ? [] : restoreKeys
+    )
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     core.info(`[warning] ${msg}`)
@@ -170,7 +175,8 @@ async function restoreCoursierCache(
   extraSharedKey: string,
   extraKey: string,
   matrixHashedContent: string,
-  extraHashedContent: string
+  extraHashedContent: string,
+  disableFallback: boolean
 ): Promise<void> {
   let paths: string[] = []
 
@@ -190,7 +196,8 @@ async function restoreCoursierCache(
     extraSharedKey,
     extraKey,
     matrixHashedContent,
-    extraHashedContent
+    extraHashedContent,
+    disableFallback
   )
 }
 
@@ -200,7 +207,8 @@ async function restoreSbtCache(
   extraSharedKey: string,
   extraKey: string,
   matrixHashedContent: string,
-  extraHashedContent: string
+  extraHashedContent: string,
+  disableFallback: boolean
 ): Promise<void> {
   await restoreCache(
     'sbt-ivy2-cache',
@@ -210,7 +218,8 @@ async function restoreSbtCache(
     extraSharedKey,
     extraKey,
     matrixHashedContent,
-    extraHashedContent
+    extraHashedContent,
+    disableFallback
   )
 }
 
@@ -220,7 +229,8 @@ async function restoreMillCache(
   extraSharedKey: string,
   extraKey: string,
   matrixHashedContent: string,
-  extraHashedContent: string
+  extraHashedContent: string,
+  disableFallback: boolean
 ): Promise<void> {
   await restoreCache(
     'mill',
@@ -230,7 +240,8 @@ async function restoreMillCache(
     extraSharedKey,
     extraKey,
     matrixHashedContent,
-    extraHashedContent
+    extraHashedContent,
+    disableFallback
   )
 }
 
@@ -240,7 +251,8 @@ async function restoreAmmoniteCache(
   extraSharedKey: string,
   extraKey: string,
   matrixHashedContent: string,
-  extraHashedContent: string
+  extraHashedContent: string,
+  disableFallback: boolean
 ): Promise<void> {
   await restoreCache(
     'ammonite',
@@ -250,7 +262,8 @@ async function restoreAmmoniteCache(
     extraSharedKey,
     extraKey,
     matrixHashedContent,
-    extraHashedContent
+    extraHashedContent,
+    disableFallback
   )
 }
 
@@ -319,6 +332,7 @@ async function run(): Promise<void> {
   const ignoreJobAsPartCacheKey = readExtraBoolean('ignoreJob')
   const ignoreMatrixAsPartCacheKey = readExtraBoolean('ignoreMatrix')
   const ignoreAmmonite = readExtraBoolean('ignoreAmmonite')
+  const disableFallback = readExtraBoolean('disableFallback')
 
   const job = ignoreJobAsPartCacheKey ? '' : readExtraKeys('job')
   let matrix = readExtraKeys('matrix')
@@ -378,7 +392,8 @@ async function run(): Promise<void> {
     extraKey,
     extraCoursierKey,
     matrix,
-    JSON.stringify(coursierHashedContent)
+    JSON.stringify(coursierHashedContent),
+    disableFallback
   )
 
   if (hasSbtFiles) {
@@ -391,7 +406,8 @@ async function run(): Promise<void> {
       JSON.stringify({
         sbt: extraSbtHashedContent,
         other: extraHashedContent
-      })
+      }),
+      disableFallback
     )
   }
 
@@ -405,7 +421,8 @@ async function run(): Promise<void> {
       JSON.stringify({
         mill: extraMillHashedContent,
         other: extraHashedContent
-      })
+      }),
+      disableFallback
     )
   }
 
@@ -427,7 +444,8 @@ async function run(): Promise<void> {
       JSON.stringify({
         amm: extraAmmoniteHashedContent,
         other: extraHashedContent
-      })
+      }),
+      disableFallback
     )
   }
 }
