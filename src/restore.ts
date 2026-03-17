@@ -4,7 +4,6 @@ import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import {stat} from 'fs'
 import {readFile, unlink, writeFile} from 'fs/promises'
-
 let _unameValue = ''
 
 // This should catch some ETIMEDOUT errors seen in the restore cache step.

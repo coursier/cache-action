@@ -5,7 +5,6 @@ import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 import {unlink} from 'fs/promises'
 
-
 async function saveCache(id: string): Promise<void> {
   const upperId = id.toLocaleUpperCase('en-US')
   const primaryKey = core.getState(`${upperId}_CACHE_KEY`)
