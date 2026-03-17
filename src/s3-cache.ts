@@ -15,10 +15,6 @@ import {pipeline} from 'stream/promises'
 import * as os from 'os'
 import * as path from 'path'
 
-export function isS3BackendEnabled(): boolean {
-  return Boolean(core.getInput('s3-bucket'))
-}
-
 function createS3Client(): S3Client {
   const endpoint = core.getInput('s3-endpoint') || undefined
   const region = core.getInput('s3-region') || 'us-east-1'

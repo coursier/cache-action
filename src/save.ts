@@ -4,7 +4,7 @@ import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 import {unlink} from 'fs/promises'
-import {isS3BackendEnabled, saveCacheS3} from './s3-cache.js'
+
 
 async function saveCache(id: string): Promise<void> {
   const upperId = id.toLocaleUpperCase('en-US')
@@ -34,7 +34,8 @@ async function saveCache(id: string): Promise<void> {
   // https://github.com/actions/cache/blob/9ab95382c899bf0953a0c6c1374373fc40456ffe/src/save.ts#L39-L49
   try {
     core.info(`Saving ${id} cache`)
-    if (isS3BackendEnabled()) {
+    if (core.getInput('s3-bucket')) {
+      const {saveCacheS3} = await import('./s3-cache.js')
       await saveCacheS3(cachePaths, primaryKey)
     } else {
       await cache.saveCache(cachePaths, primaryKey)
@@ -43,10 +44,10 @@ async function saveCache(id: string): Promise<void> {
     // ValidationError and ReserveCacheError are specific to the GitHub Actions
     // cache backend. For the S3 backend all errors are treated as warnings to
     // mirror the resilient behaviour of the GitHub cache path.
-    if (!isS3BackendEnabled() && err instanceof cache.ValidationError) {
+    if (!core.getInput('s3-bucket') && err instanceof cache.ValidationError) {
       throw err
     } else if (
-      !isS3BackendEnabled() &&
+      !core.getInput('s3-bucket') &&
       err instanceof cache.ReserveCacheError
     ) {
       core.info(err.message)

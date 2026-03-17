@@ -4,7 +4,7 @@ import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import {stat} from 'fs'
 import {readFile, unlink, writeFile} from 'fs/promises'
-import {isS3BackendEnabled, restoreCacheS3} from './s3-cache.js'
+
 let _unameValue = ''
 
 // This should catch some ETIMEDOUT errors seen in the restore cache step.
@@ -140,7 +140,8 @@ async function restoreCache(
   let restoreKey: string | undefined = undefined
 
   try {
-    if (isS3BackendEnabled()) {
+    if (core.getInput('s3-bucket')) {
+      const {restoreCacheS3} = await import('./s3-cache.js')
       restoreKey = await restoreCacheS3(
         paths,
         key,
