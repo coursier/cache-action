@@ -139,11 +139,20 @@ async function restoreCache(
   let restoreKey: string | undefined = undefined
 
   try {
-    restoreKey = await cache.restoreCache(
-      paths,
-      key,
-      disableFallback ? [] : restoreKeys
-    )
+    if (core.getInput('s3-bucket')) {
+      const {restoreCacheS3} = await import('./s3-cache.js')
+      restoreKey = await restoreCacheS3(
+        paths,
+        key,
+        disableFallback ? [] : restoreKeys
+      )
+    } else {
+      restoreKey = await cache.restoreCache(
+        paths,
+        key,
+        disableFallback ? [] : restoreKeys
+      )
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     core.info(`[warning] ${msg}`)

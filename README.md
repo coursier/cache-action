@@ -37,6 +37,45 @@ Cached when Ammonite scripts are found (any of `*.sc`, `*/*.sc`).
 
 Add files to take into account in its cache key via [`ammoniteScripts`](#ammonitescripts).
 
+## S3 caching backend
+
+For self-hosted runners, the action can use an S3-compatible object store (AWS S3, MinIO, etc.)
+as the caching backend instead of the default GitHub Actions cache.
+
+Set the `s3-bucket` input to enable this. All caches (coursier, sbt, mill, Ammonite) will then
+be stored in and restored from that bucket.
+
+### Example — AWS S3
+
+```yaml
+    steps:
+      - uses: actions/checkout@v5
+      - uses: coursier/cache-action@v7
+        with:
+          s3-bucket: my-ci-cache-bucket
+          s3-region: eu-west-1
+          s3-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          s3-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+
+### Example — MinIO (self-hosted S3-compatible)
+
+```yaml
+    steps:
+      - uses: actions/checkout@v5
+      - uses: coursier/cache-action@v7
+        with:
+          s3-bucket: ci-cache
+          s3-endpoint: http://minio.internal:9000
+          s3-region: us-east-1
+          s3-path-style: 'true'
+          s3-access-key-id: ${{ secrets.MINIO_ACCESS_KEY }}
+          s3-secret-access-key: ${{ secrets.MINIO_SECRET_KEY }}
+```
+
+> **Note:** The S3 backend requires `tar` to be available on the runner.
+> It is supported on Linux and macOS runners. Windows is not currently supported.
+
 ## Parameters
 
 ### `root`
@@ -154,6 +193,36 @@ steps:
 This is equivalent to passing the version as `extraHashedContent`, but more convenient because it
 can be set globally for the whole workflow (or even as a repository variable / secret) without
 touching the individual step configuration.
+
+### `s3-bucket`
+
+*Optional*
+
+Name of the S3 bucket to use as the caching backend. When set, all caches are stored in and retrieved from this S3 bucket instead of the GitHub Actions cache.
+
+### `s3-endpoint`
+
+*Optional*
+
+Custom S3 endpoint URL. Use this to point to an S3-compatible service such as MinIO (e.g. `http://minio:9000`). Leave empty to use the default AWS S3 endpoint.
+
+### `s3-region`
+
+*Optional* Default: `us-east-1`
+
+AWS region for the S3 bucket.
+
+### `s3-access-key-id` / `s3-secret-access-key`
+
+*Optional*
+
+AWS credentials for authenticating with S3. If not set, the AWS SDK falls back to its default credential chain (environment variables, instance profile, etc.).
+
+### `s3-path-style`
+
+*Optional* Default: `false`
+
+Set `true` to force path-style addressing (required for MinIO and most self-hosted S3-compatible services).
 
 ## Outputs
 
