@@ -124,6 +124,14 @@ Default: `false`
 
 Set `true` to skip saving and restoring the Ammonite cache, regardless of whether the repository contains `.sc` scripts.
 
+### `disableFallback`
+
+*Optional*
+
+Default: `false`
+
+Set `true` to disable falling back to a less specific cache key when there is no exact cache hit. By default, if no exact cache match is found, the action will restore from a more general cache key (e.g. from a different job or build configuration). Disabling this prevents unintended cache sharing across jobs or matrix instances that have different dependency sets.
+
 ## Cache invalidation
 
 To manually invalidate the cache without changing your build files, set the `COURSIER_CACHE_ACTION_CACHE_VERSION`
