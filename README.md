@@ -132,6 +132,16 @@ Default: `false`
 
 Set `true` to disable falling back to a less specific cache key when there is no exact cache hit. By default, if no exact cache match is found, the action will restore from a more general cache key (e.g. from a different job or build configuration). Disabling this prevents unintended cache sharing across jobs or matrix instances that have different dependency sets.
 
+### `disableCrossJobFallback`
+
+*Optional*
+
+Default: `false`
+
+Set `true` to omit fallback keys shared by different jobs while retaining less-specific fallback
+keys within the current job. For example, a `tests` job can restore `coursier-tests-...` caches but
+cannot restore a `coursier-scalafmt-...` cache. This option has no effect when `ignoreJob` is `true`.
+
 ## Cache invalidation
 
 To manually invalidate the cache without changing your build files, set the `COURSIER_CACHE_ACTION_CACHE_VERSION`

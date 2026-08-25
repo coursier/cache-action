@@ -10,7 +10,7 @@
     "format": "prettier --write **/*.ts",
     "format-check": "prettier --check **/*.ts",
     "lint": "eslint src/**/*.ts",
-    "test": "echo 'No test framework configured'",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
     "all": "npm run build && npm run format-check && npm run lint && npm test"
   },
   "repository": {

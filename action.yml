@@ -134,6 +134,14 @@ inputs:
       prevents unintended cache sharing across jobs or matrix instances that have different
       dependency sets.
     default: 'false'
+  disableCrossJobFallback:
+    required: false
+    description: >
+      Set 'true' to omit fallback keys shared by different jobs while retaining less-specific
+      fallback keys within the current job. This prevents one job from restoring another job's
+      cache without making every build configuration change a full cache miss. This option has
+      no effect when ignoreJob is 'true'.
+    default: 'false'
 outputs:
   cache-hit-coursier:
     description: 'A boolean value to indicate a match was found for the coursier cache'

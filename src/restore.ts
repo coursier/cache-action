@@ -2,6 +2,7 @@ import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
+import {buildCacheKeys} from './cache-keys.js'
 import {stat} from 'fs'
 import {readFile, unlink, writeFile} from 'fs/promises'
 let _unameValue = ''
@@ -90,44 +91,36 @@ async function restoreCache(
   extraKey: string,
   matrixHashedContent: string,
   extraHashedContent: string,
-  disableFallback: boolean
+  disableFallback: boolean,
+  disableCrossJobFallback: boolean
 ): Promise<void> {
   const upperId = id.toLocaleUpperCase('en-US')
   const cacheHitId = `cache-hit-${id}`
 
-  let key = id
-  const restoreKeys: string[] = []
+  const matrixHash =
+    matrixHashedContent.length > 0
+      ? await hashContent([], matrixHashedContent)
+      : ''
+  const inputHash =
+    inputFiles.length > 0 || extraHashedContent.length > 0
+      ? await hashContent(inputFiles, extraHashedContent)
+      : ''
+  const {key, restoreKeys} = buildCacheKeys({
+    id,
+    job,
+    matrixHash,
+    extraSharedKey,
+    extraKey,
+    inputHash,
+    disableCrossJobFallback
+  })
 
-  if (job.length > 0) {
-    restoreKeys.push(`${key}-`)
-    key = `${key}-${job}`
-  }
-
-  if (matrixHashedContent.length > 0) {
-    restoreKeys.push(`${key}-`)
-    const matrixHash = await hashContent([], matrixHashedContent)
-    key = `${key}-matrix-${matrixHash}`
-  }
-
-  if (extraSharedKey.length > 0) {
-    restoreKeys.push(`${key}-`)
-    key = `${key}-${extraSharedKey}`
-  }
-
-  if (extraKey.length > 0) {
-    restoreKeys.push(`${key}-`)
-    key = `${key}-${extraKey}`
-  }
-
-  if (inputFiles.length > 0 || extraHashedContent.length > 0) {
-    restoreKeys.push(`${key}-`)
-    const hash = await hashContent(inputFiles, extraHashedContent)
-    key = `${key}-${hash}`
-  }
-
-  restoreKeys.reverse()
-
-  core.info(`${id} cache keys${disableFallback ? ' (fallback disabled)' : ''}:`)
+  const fallbackStatus = disableFallback
+    ? ' (fallback disabled)'
+    : disableCrossJobFallback
+      ? ' (cross-job fallback disabled)'
+      : ''
+  core.info(`${id} cache keys${fallbackStatus}:`)
   core.info(`  ${key}`)
   for (const restoreKey of restoreKeys) {
     core.info(`  ${restoreKey}`)
@@ -176,7 +169,8 @@ async function restoreCoursierCache(
   extraKey: string,
   matrixHashedContent: string,
   extraHashedContent: string,
-  disableFallback: boolean
+  disableFallback: boolean,
+  disableCrossJobFallback: boolean
 ): Promise<void> {
   let paths: string[] = []
 
@@ -197,7 +191,8 @@ async function restoreCoursierCache(
     extraKey,
     matrixHashedContent,
     extraHashedContent,
-    disableFallback
+    disableFallback,
+    disableCrossJobFallback
   )
 }
 
@@ -208,7 +203,8 @@ async function restoreSbtCache(
   extraKey: string,
   matrixHashedContent: string,
   extraHashedContent: string,
-  disableFallback: boolean
+  disableFallback: boolean,
+  disableCrossJobFallback: boolean
 ): Promise<void> {
   await restoreCache(
     'sbt-ivy2-cache',
@@ -219,7 +215,8 @@ async function restoreSbtCache(
     extraKey,
     matrixHashedContent,
     extraHashedContent,
-    disableFallback
+    disableFallback,
+    disableCrossJobFallback
   )
 }
 
@@ -230,7 +227,8 @@ async function restoreMillCache(
   extraKey: string,
   matrixHashedContent: string,
   extraHashedContent: string,
-  disableFallback: boolean
+  disableFallback: boolean,
+  disableCrossJobFallback: boolean
 ): Promise<void> {
   await restoreCache(
     'mill',
@@ -241,7 +239,8 @@ async function restoreMillCache(
     extraKey,
     matrixHashedContent,
     extraHashedContent,
-    disableFallback
+    disableFallback,
+    disableCrossJobFallback
   )
 }
 
@@ -252,7 +251,8 @@ async function restoreAmmoniteCache(
   extraKey: string,
   matrixHashedContent: string,
   extraHashedContent: string,
-  disableFallback: boolean
+  disableFallback: boolean,
+  disableCrossJobFallback: boolean
 ): Promise<void> {
   await restoreCache(
     'ammonite',
@@ -263,7 +263,8 @@ async function restoreAmmoniteCache(
     extraKey,
     matrixHashedContent,
     extraHashedContent,
-    disableFallback
+    disableFallback,
+    disableCrossJobFallback
   )
 }
 
@@ -345,6 +346,7 @@ async function run(): Promise<void> {
   const ignoreMatrixAsPartCacheKey = readExtraBoolean('ignoreMatrix')
   const ignoreAmmonite = readExtraBoolean('ignoreAmmonite')
   const disableFallback = readExtraBoolean('disableFallback')
+  const disableCrossJobFallback = readExtraBoolean('disableCrossJobFallback')
 
   const job = ignoreJobAsPartCacheKey ? '' : readExtraKeys('job')
   let matrix = readExtraKeys('matrix')
@@ -405,7 +407,8 @@ async function run(): Promise<void> {
     extraCoursierKey,
     matrix,
     JSON.stringify(coursierHashedContent),
-    disableFallback
+    disableFallback,
+    disableCrossJobFallback
   )
 
   if (hasSbtFiles) {
@@ -419,7 +422,8 @@ async function run(): Promise<void> {
         sbt: extraSbtHashedContent,
         other: effectiveExtraHashedContent
       }),
-      disableFallback
+      disableFallback,
+      disableCrossJobFallback
     )
   }
 
@@ -434,7 +438,8 @@ async function run(): Promise<void> {
         mill: extraMillHashedContent,
         other: effectiveExtraHashedContent
       }),
-      disableFallback
+      disableFallback,
+      disableCrossJobFallback
     )
   }
 
@@ -457,7 +462,8 @@ async function run(): Promise<void> {
         amm: extraAmmoniteHashedContent,
         other: effectiveExtraHashedContent
       }),
-      disableFallback
+      disableFallback,
+      disableCrossJobFallback
     )
   }
 }
