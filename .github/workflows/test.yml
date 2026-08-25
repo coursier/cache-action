@@ -29,6 +29,7 @@ jobs:
         with:
           root: test
           extraFiles: test/foo.sh # for the ammonite version?
+          disableCrossJobFallback: true
 
       - run: cd test && eval "$(./cs java --env --jvm 17)" && ./mill -i __.compile && ./foo.sh
         if: runner.os != 'Windows'
