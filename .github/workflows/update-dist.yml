@@ -4,6 +4,10 @@ on:
     branches:
     - main
 
+concurrency:
+  group: update-dist
+  cancel-in-progress: false
+
 jobs:
   update-dist:
     runs-on: ubuntu-latest
