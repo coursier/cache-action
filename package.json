@@ -9,9 +9,10 @@
     "build": "ncc build src/restore.ts --source-map --minify --out dist/restore && ncc build src/save.ts --source-map --minify --out dist/save",
     "format": "prettier --write **/*.ts",
     "format-check": "prettier --check **/*.ts",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "test": "echo 'No test framework configured'",
-    "all": "npm run build && npm run format-check && npm run lint && npm test"
+    "all": "npm run build && npm run typecheck && npm run format-check && npm run lint && npm test"
   },
   "repository": {
     "type": "git",
@@ -35,10 +36,11 @@
     "@types/node": "^26.6.1",
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.70.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@vercel/ncc": "^0.45.0",
     "eslint": "^10.10.0",
     "js-yaml": "^5.4.2",
     "prettier": "^3.9.10",
-    "typescript": "^6.0.3"
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }
