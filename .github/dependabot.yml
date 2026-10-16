@@ -7,6 +7,11 @@ updates:
     # Check the npm registry for updates every day (weekdays)
     schedule:
       interval: 'daily'
+    ignore:
+      # TypeScript 7 (native port) has no JS compiler API yet, which
+      # typescript-eslint and ncc's ts-loader both require
+      - dependency-name: 'typescript'
+        versions: ['>=7']
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
