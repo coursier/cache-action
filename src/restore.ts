@@ -4,6 +4,7 @@ import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import {stat} from 'fs'
 import {readFile, unlink, writeFile} from 'fs/promises'
+import {cacheModeAllowsWrite, setupCacheMode} from './cacheMode.js'
 let _unameValue = ''
 
 // This should catch some ETIMEDOUT errors seen in the restore cache step.
@@ -149,10 +150,14 @@ async function restoreCache(
     core.info(`[warning] ${msg}`)
   }
 
+  const saveMessage = cacheModeAllowsWrite()
+    ? `${id} cache will be saved in post run job.`
+    : `${id} cache will not be saved in post run job (cache-mode doesn't permit writes).`
+
   if (!restoreKey) {
     core.setOutput(cacheHitId, 'false')
     core.info(`${id} cache not found.`)
-    core.info(`${id} cache will be saved in post run job.`)
+    core.info(saveMessage)
     return
   }
 
@@ -163,7 +168,7 @@ async function restoreCache(
   } else {
     core.setOutput(cacheHitId, 'false')
     core.info(`${id} cache miss, fell back on ${restoreKey}.`)
-    core.info(`${id} cache will be saved in post run job.`)
+    core.info(saveMessage)
   }
   core.info('  ')
   core.saveState(`${upperId}_CACHE_RESULT`, restoreKey)
@@ -291,6 +296,11 @@ function readExtraBoolean(variableName: string): boolean {
 }
 
 async function run(): Promise<void> {
+  const cacheMode = setupCacheMode()
+  if (cacheMode.length > 0) {
+    core.info(`Effective cache-mode: ${cacheMode}`)
+  }
+
   let root = core.getInput('root')
   if (!root.endsWith('/')) {
     root = `${root}/`

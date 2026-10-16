@@ -4,6 +4,7 @@ import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 import {unlink} from 'fs/promises'
+import {cacheModeAllowsWrite, setupCacheMode} from './cacheMode.js'
 
 async function saveCache(id: string): Promise<void> {
   const upperId = id.toLocaleUpperCase('en-US')
@@ -27,6 +28,11 @@ async function saveCache(id: string): Promise<void> {
 
   if (cacheKey === primaryKey) {
     core.info(`${id} cache hit, not saving cache.`)
+    return
+  }
+
+  if (!cacheModeAllowsWrite()) {
+    core.info(`${id} cache-mode doesn't permit writes, not saving cache.`)
     return
   }
 
@@ -70,6 +76,7 @@ async function cleanupSbtIvy2Cache(): Promise<void> {
 process.on('uncaughtException', e => core.info(`[warning] ${e.message}`))
 
 async function run(): Promise<void> {
+  setupCacheMode()
   await saveCache('coursier')
   await cleanupSbtIvy2Cache()
   await saveCache('sbt-ivy2-cache')

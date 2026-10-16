@@ -132,6 +132,96 @@ Default: `false`
 
 Set `true` to disable falling back to a less specific cache key when there is no exact cache hit. By default, if no exact cache match is found, the action will restore from a more general cache key (e.g. from a different job or build configuration). Disabling this prevents unintended cache sharing across jobs or matrix instances that have different dependency sets.
 
+### `cacheMode`
+
+*Optional*
+
+Default: empty (use the workflow / job `cache-mode` as is)
+
+Cache access for this step: one of `read`, `write`, `write-only`, or `none`. This can only narrow the access
+granted by the workflow or job [`cache-mode`](#cache-access-cache-mode), never widen it. For example, pass `read`
+to restore caches without saving them.
+
+## Cache access (`cache-mode`)
+
+GitHub Actions lets workflows restrict their access to the cache with the
+[`cache-mode` key](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching),
+set at the workflow level, at the job level, or both (a job-level value overrides the workflow-level one).
+This action honors it, like `actions/cache` does:
+
+| `cache-mode` | Caches restored | Caches saved |
+|--------------|-----------------|--------------|
+| `write`      | Yes             | Yes          |
+| `read`       | Yes             | No           |
+| `write-only` | No              | Yes          |
+| `none`       | No              | No           |
+
+When `cache-mode` isn't set, GitHub picks `write` for trusted triggers (`push`, `schedule`, `workflow_dispatch`, …)
+and `read` for low-trust ones (`pull_request_target`, `issue_comment`, `workflow_run`, …).
+
+When the mode doesn't permit an operation, the action logs a message and moves on, and the job doesn't fail.
+A skipped restore counts as a cache miss, so the `cache-hit-…` outputs are `false`. A skipped save just doesn't
+happen.
+
+For example, to have a job restore caches without ever saving them:
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    cache-mode: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: coursier/cache-action@v7
+      - run: sbt test
+```
+
+To restrict only this action, and leave other caching steps of the job unaffected, use the
+[`cacheMode`](#cachemode) input instead:
+
+```yaml
+steps:
+  - uses: actions/checkout@v5
+  - uses: coursier/cache-action@v7
+    with:
+      cacheMode: read   # restore the coursier / sbt / mill / Ammonite caches, but never save them
+```
+
+`cacheMode` can only narrow what the workflow or job grants. Combining `cacheMode: read` with a job
+`cache-mode: write-only`, for example, gives `none`. The input also works on runners that don't support
+the `cache-mode` key, such as older GitHub Enterprise Server releases.
+
+### Read-only caches in pull requests, read / write on `main`
+
+Caches saved by `pull_request` runs are only visible to that pull request, but they still count towards the
+repository cache quota, and can get caches from `main` evicted. To have pull requests reuse the caches of `main`
+without saving their own, while `main` keeps updating them, compute `cacheMode` from the branch:
+
+```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: coursier/cache-action@v7
+        with:
+          cacheMode: ${{ github.ref == 'refs/heads/main' && 'write' || 'read' }}
+      - run: sbt test
+```
+
+On `main`, the caches are restored, then saved if their key changed. In pull requests (`github.ref` is
+`refs/pull/<number>/merge` there), the caches of `main` are restored, but nothing is saved. Pull requests whose build
+files differ from `main` fall back on the closest cache from `main`, as described in [`extraFiles`](#extrafiles).
+
+GitHub doesn't document `${{ … }}` expressions as supported in the `cache-mode` key, so getting the same behavior with
+it means separate workflows, such as one triggered on `push` to `main` (where the default is `write`) and another one
+triggered on `pull_request` that sets `cache-mode: read` at the top level.
+
 ## Cache invalidation
 
 To manually invalidate the cache without changing your build files, set the `COURSIER_CACHE_ACTION_CACHE_VERSION`
