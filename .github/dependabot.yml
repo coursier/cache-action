@@ -7,6 +7,13 @@ updates:
     # Check the npm registry for updates every day (weekdays)
     schedule:
       interval: 'daily'
+    ignore:
+      # 'typescript' is an alias of @typescript/typescript6: TypeScript 7 has no
+      # JS compiler API yet, which typescript-eslint and ncc's ts-loader both
+      # need. TS 7's tsc comes from '@typescript/native'. Drop the alias and
+      # this rule once both tools support TS 7.1's API.
+      - dependency-name: 'typescript'
+        versions: ['>=7']
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
