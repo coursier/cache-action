@@ -15,7 +15,9 @@ Add a `coursier/cache-action@v7` step to your YAML workflow, like
 
 ### Coursier cache
 
-Always cached.
+Always cached. Only the cache itself is (`v1`, like `~/.cache/coursier/v1` on Linux), not the
+directories next to it, like the archive cache (`arc`, whose archives get extracted again from
+the ones in `v1`) or the privileged archive cache (`priv`, that has files only root can read).
 
 Add files to take into account in its cache key via [`extraFiles`](#extrafiles).
 

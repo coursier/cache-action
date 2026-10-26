@@ -43,10 +43,14 @@ function getOs(unameShort: string): string {
   return 'unknown'
 }
 
+// The cache itself (v1), not the directory containing it, that also holds the archive
+// cache (arc, whose extracted archives can be extracted again from the archives in v1), and
+// the privileged archive cache (priv, which has files only root can read, and which tar fails
+// to save then)
 function getCachePath(os: string): string {
-  if (os === 'win') return '~\\AppData\\Local\\Coursier\\Cache'
-  if (os === 'darwin') return '~/Library/Caches/Coursier'
-  return '~/.cache/coursier'
+  if (os === 'win') return '~\\AppData\\Local\\Coursier\\Cache\\v1'
+  if (os === 'darwin') return '~/Library/Caches/Coursier/v1'
+  return '~/.cache/coursier/v1'
 }
 
 async function doHashFiles(files: string[]): Promise<string> {
