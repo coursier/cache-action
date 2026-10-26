@@ -19,6 +19,9 @@ Always cached. Only the cache itself is (`v1`, like `~/.cache/coursier/v1` on Li
 directories next to it, like the archive cache (`arc`, whose archives get extracted again from
 the ones in `v1`) or the privileged archive cache (`priv`, that has files only root can read).
 
+The build files hashed in its cache key are hashed with LF line endings, so that checking them
+out with CRLF ones (`core.autocrlf`, on Windows) doesn't change the key.
+
 Add files to take into account in its cache key via [`extraFiles`](#extrafiles).
 
 ### `~/.sbt` and `~/.ivy2/cache`
