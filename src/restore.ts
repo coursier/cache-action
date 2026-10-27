@@ -404,11 +404,28 @@ async function run(): Promise<void> {
     `${root}project/**.scala`
   ].concat(extraSbtFiles)
 
-  const millSpecificGlobs = [`${root}.mill-version`, `${root}mill`].concat(
-    extraMillFiles
-  )
+  // Files whose presence uniquely identifies a Mill project
+  // (unlike *.sc files, which can be plain Ammonite scripts)
+  const millSpecificGlobs = [
+    `${root}build.mill`,
+    `${root}build.mill.yaml`,
+    `${root}build.mill.scala`,
+    `${root}mill-build/build.mill`,
+    `${root}mill-build/build.mill.yaml`,
+    `${root}.mill-*`,
+    `${root}.config/mill-*`,
+    `${root}mill`,
+    `${root}mill.bat`,
+    `${root}millw`
+  ].concat(extraMillFiles)
   const millLegacyGlobs = [`${root}*.sc`, `${root}*.mill.scala`]
-  const millGlobs = [`${root}*.mill`, `${root}*.mill.yaml`]
+  const millGlobs = [
+    `${root}*.mill`,
+    `${root}*.mill.yaml`,
+    `${root}**/package.mill`,
+    `${root}**/package.mill.yaml`,
+    `${root}**/package.mill.scala`
+  ]
     .concat(millLegacyGlobs)
     .concat(millSpecificGlobs)
     .concat(extraMillFiles)
