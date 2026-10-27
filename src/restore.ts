@@ -2,8 +2,10 @@ import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
+import {createHash} from 'crypto'
 import {stat} from 'fs'
-import {readFile, unlink, writeFile} from 'fs/promises'
+import {readFile, stat as statFile, unlink, writeFile} from 'fs/promises'
+import * as path from 'path'
 import {cacheModeAllowsWrite, setupCacheMode} from './cacheMode.js'
 let _unameValue = ''
 
@@ -43,14 +45,42 @@ function getOs(unameShort: string): string {
   return 'unknown'
 }
 
+// The cache itself (v1), not the directory containing it, that also holds the archive
+// cache (arc, whose extracted archives can be extracted again from the archives in v1), and
+// the privileged archive cache (priv, which has files only root can read, and which tar fails
+// to save then)
 function getCachePath(os: string): string {
-  if (os === 'win') return '~\\AppData\\Local\\Coursier\\Cache'
-  if (os === 'darwin') return '~/Library/Caches/Coursier'
-  return '~/.cache/coursier'
+  if (os === 'win') return '~\\AppData\\Local\\Coursier\\Cache\\v1'
+  if (os === 'darwin') return '~/Library/Caches/Coursier/v1'
+  return '~/.cache/coursier/v1'
 }
 
+function withLfLineEndings(content: Buffer): Buffer {
+  if (!content.includes('\r\n')) return content
+  // latin1 maps each byte to a single char and back, so that only the CRLFs change
+  return Buffer.from(
+    content.toString('latin1').replaceAll('\r\n', '\n'),
+    'latin1'
+  )
+}
+
+// Same as glob.hashFiles, except that CRLF line endings are hashed as LF ones, so that
+// checking files out with or without converting line endings (core.autocrlf on Windows)
+// gives the same keys. Files with LF line endings get the same hash as with glob.hashFiles.
 async function doHashFiles(files: string[]): Promise<string> {
-  return glob.hashFiles(files.filter(Boolean).join('\n'))
+  const globber = await glob.create(files.filter(Boolean).join('\n'))
+  const workspace = process.env['GITHUB_WORKSPACE'] ?? process.cwd()
+  const result = createHash('sha256')
+  let hasMatch = false
+  for await (const file of globber.globGenerator()) {
+    if (!file.startsWith(`${workspace}${path.sep}`)) continue
+    if ((await statFile(file)).isDirectory()) continue
+    const content = withLfLineEndings(await readFile(file))
+    result.write(createHash('sha256').update(content).digest())
+    hasMatch = true
+  }
+  result.end()
+  return hasMatch ? result.digest('hex') : ''
 }
 
 async function doGlob(globs: string[]): Promise<string[]> {
