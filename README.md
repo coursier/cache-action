@@ -84,27 +84,28 @@ Its key also takes into account the mill build definition files: `*.mill`, `*.mi
 
 Each cache has its own key, made of the following parts, separated by `-`:
 
-1. the cache name (`coursier`, `sbt-ivy2-cache` or `mill`),
+1. the cache name (`coursier`, `sbt-ivy2-cache` or `mill`), followed, for all caches but the
+   coursier one, by the OS and CPU architecture of the runner (like `linux-x64` or `darwin-arm64`),
 2. the job id (see [`job`](#job) and [`ignoreJob`](#ignorejob)),
 3. `matrix-` followed by a hash of the matrix values, if the job uses a matrix (see
    [`matrix`](#matrix) and [`ignoreMatrix`](#ignorematrix)),
 4. [`extraKey`](#extrakey), if set,
-5. the cache-specific extra key ([`extraSbtKey`](#extrasbtkey-extramillkey), …), if set,
+5. the cache-specific extra key ([`extraSbtKey`](#extracoursierkey-extrasbtkey-extramillkey), …), if set,
 6. a hash of the build files [listed above](#cached-directories), of [`extraFiles`](#extrafiles),
    and of [`extraHashedContent`](#extrahashedcontent).
 
 Parts that don't apply are left out. For example, the sbt cache of a `test` job with a matrix
 gets a key like
 ```text
-sbt-ivy2-cache-test-matrix-<matrix hash>-<build files hash>
+sbt-ivy2-cache-linux-x64-test-matrix-<matrix hash>-<build files hash>
 ```
 
 When the job starts:
 - if a cache with that exact key exists, it is restored, the `cache-hit-…` output is `true`,
   and the cache isn't saved again at the end of the job, as it is up-to-date already,
 - else, the action falls back on the most recent cache whose key shares the longest prefix with
-  that key, dropping the parts above from the end one by one (`sbt-ivy2-cache-test-matrix-<matrix hash>-`,
-  then `sbt-ivy2-cache-test-`, then `sbt-ivy2-cache-`). The `cache-hit-…` output is `false`,
+  that key, dropping the parts above from the end one by one (`sbt-ivy2-cache-linux-x64-test-matrix-<matrix hash>-`,
+  then `sbt-ivy2-cache-linux-x64-test-`, then `sbt-ivy2-cache-linux-x64-`). The `cache-hit-…` output is `false`,
   and, as new dependencies may get downloaded during the job, the cache is saved under the new
   key at the end of the job. Set [`disableFallback`](#disablefallback) to `true` to start from
   an empty cache instead.
@@ -127,9 +128,10 @@ All inputs are optional.
 | [`extraSbtFiles`](#extrasbtfiles) | | Extra sbt build files |
 | [`extraMillFiles`](#extramillfiles) | | Extra mill build files |
 | [`extraKey`](#extrakey) | | Extra value added to all cache keys |
-| [`extraSbtKey`, `extraMillKey`](#extrasbtkey-extramillkey) | | Extra value added to a single cache key |
+| [`extraCoursierKey`, `extraSbtKey`, `extraMillKey`](#extracoursierkey-extrasbtkey-extramillkey) | | Extra value added to a single cache key |
 | [`extraHashedContent`](#extrahashedcontent) | | Extra content to hash in all cache keys |
-| [`extraSbtHashedContent`, `extraMillHashedContent`](#extrasbthashedcontent-extramillhashedcontent) | | Extra content to hash in a single cache key |
+| [`extraCoursierHashedContent`, `extraSbtHashedContent`, `extraMillHashedContent`](#extracoursierhashedcontent-extrasbthashedcontent-extramillhashedcontent) | | Extra content to hash in a single cache key |
+| [`read-cs-cache-files`](#read-cs-cache-files) | `true` | Read extra files from `.github/cs-cache-files` |
 | [`job`](#job) | `${{ github.job }}` | Job name, added to the cache keys |
 | [`matrix`](#matrix) | `${{ toJson(matrix) }}` | Matrix values, hashed in the cache keys |
 | [`ignoreJob`](#ignorejob) | `false` | Leave the job name out of the cache keys |
@@ -155,7 +157,8 @@ sub-directory here:
 
 Path of the coursier cache.
 
-By default, the coursier cache is assumed to be in the
+By default, the coursier cache is assumed to be at the location the `COURSIER_CACHE` environment
+variable points to, if it is set when the action runs, else in the
 [default OS-dependent location](https://get-coursier.io/docs/cache.html#default-location).
 Set this input to override that. The action then also sets the `COURSIER_CACHE` environment
 variable for the subsequent steps, so that you don't have to set it yourself.
@@ -178,7 +181,8 @@ relative to the repository root, not to [`root`](#root).
 ```
 
 Files can also be listed, one path or glob per line, in a `.github/cs-cache-files` file in your
-repository. If that file exists, its entries are added to `extraFiles`.
+repository. If that file exists, its entries are added to `extraFiles`, unless
+[`read-cs-cache-files`](#read-cs-cache-files) is `false`.
 
 ### `extraSbtFiles`
 
@@ -198,9 +202,9 @@ Use it to have separate caches for jobs that would get the same keys otherwise. 
 don't fit in a cache key, or that you'd rather not show in the logs, use
 [`extraHashedContent`](#extrahashedcontent).
 
-### `extraSbtKey`, `extraMillKey`
+### `extraCoursierKey`, `extraSbtKey`, `extraMillKey`
 
-Same as [`extraKey`](#extrakey), but only added to the key of the sbt or mill cache.
+Same as [`extraKey`](#extrakey), but only added to the key of the coursier, sbt or mill cache.
 
 ### `extraHashedContent`
 
@@ -208,10 +212,17 @@ Extra content to take into account in the keys of all caches. It is hashed along
 files, so changing it gives new caches, initialized from the previous ones
 (see [How cache keys work](#how-cache-keys-work)).
 
-### `extraSbtHashedContent`, `extraMillHashedContent`
+### `extraCoursierHashedContent`, `extraSbtHashedContent`, `extraMillHashedContent`
 
 Same as [`extraHashedContent`](#extrahashedcontent), but only taken into account in the key of the
-sbt or mill cache, and in the key of the coursier cache.
+coursier cache (`extraCoursierHashedContent`), or in the key of the sbt or mill cache and in the
+key of the coursier cache (`extraSbtHashedContent`, `extraMillHashedContent`).
+
+### `read-cs-cache-files`
+
+Default: `true`
+
+Set to `false` to ignore the `.github/cs-cache-files` file (see [`extraFiles`](#extrafiles)).
 
 ### `job`
 

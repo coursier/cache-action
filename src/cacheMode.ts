@@ -49,10 +49,6 @@ export function setupCacheMode(): string {
   return mode
 }
 
-export function cacheModeAllowsRead(): boolean {
-  return isReadable(normalize(process.env['ACTIONS_CACHE_MODE']))
-}
-
 export function cacheModeAllowsWrite(): boolean {
   return isWritable(normalize(process.env['ACTIONS_CACHE_MODE']))
 }

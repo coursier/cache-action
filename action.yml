@@ -16,7 +16,8 @@ inputs:
     required: false
     description: >
       Override for the path of the coursier cache.
-      By default, the coursier cache is assumed to be in the default OS-dependent location.
+      By default, the coursier cache is assumed to be where COURSIER_CACHE points to, if that
+      environment variable is set, else in the default OS-dependent location.
       Set this input to override that. Note that this action will also set COURSIER_CACHE
       if an override is specified, so that you don't have to set it yourself.
     default: ''
@@ -61,6 +62,23 @@ inputs:
       Extra content to take into account in the keys of all caches.
       See extraFiles for more details.
       The content of extraHashedContent is hashed along with the build files.
+    default: ''
+  read-cs-cache-files:
+    required: false
+    description: >
+      Set 'false' to ignore the .github/cs-cache-files file. When that file exists, each of its
+      lines is a path or glob added to extraFiles.
+    default: 'true'
+  extraCoursierKey:
+    required: false
+    description: >
+      Extra value to be appended to the coursier cache key.
+      See extraFiles for more details.
+    default: ''
+  extraCoursierHashedContent:
+    required: false
+    description: >
+      Extra content to take into account in the coursier cache key. Same format as extraHashedContent.
     default: ''
   extraSbtFiles:
     required: false
