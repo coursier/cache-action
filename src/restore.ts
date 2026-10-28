@@ -76,12 +76,16 @@ async function restoreCache(
   extraKey: string,
   matrixHashedContent: string,
   extraHashedContent: string,
-  disableFallback: boolean
+  disableFallback: boolean,
+  platformSpecific: boolean
 ): Promise<void> {
   const upperId = id.toLocaleUpperCase('en-US')
   const cacheHitId = `cache-hit-${id}`
 
-  let key = id
+  // Unlike the coursier cache, whose path depends on the OS, and whose content
+  // can be shared across CPU architectures, the other caches have the same paths
+  // on all platforms, but may contain platform-specific files (native launchers, …)
+  let key = platformSpecific ? `${id}-${process.platform}-${process.arch}` : id
   const restoreKeys: string[] = []
 
   if (job.length > 0) {
@@ -189,7 +193,8 @@ async function restoreCoursierCache(
     extraKey,
     matrixHashedContent,
     extraHashedContent,
-    disableFallback
+    disableFallback,
+    false
   )
 }
 
@@ -211,7 +216,8 @@ async function restoreSbtCache(
     extraKey,
     matrixHashedContent,
     extraHashedContent,
-    disableFallback
+    disableFallback,
+    true
   )
 }
 
@@ -233,7 +239,8 @@ async function restoreMillCache(
     extraKey,
     matrixHashedContent,
     extraHashedContent,
-    disableFallback
+    disableFallback,
+    true
   )
 }
 
@@ -255,7 +262,8 @@ async function restoreAmmoniteCache(
     extraKey,
     matrixHashedContent,
     extraHashedContent,
-    disableFallback
+    disableFallback,
+    true
   )
 }
 

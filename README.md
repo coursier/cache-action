@@ -84,7 +84,8 @@ Its key also takes into account the mill build definition files: `*.mill`, `*.mi
 
 Each cache has its own key, made of the following parts, separated by `-`:
 
-1. the cache name (`coursier`, `sbt-ivy2-cache` or `mill`),
+1. the cache name (`coursier`, `sbt-ivy2-cache` or `mill`), followed, for all caches but the
+   coursier one, by the OS and CPU architecture of the runner (like `linux-x64` or `darwin-arm64`),
 2. the job id (see [`job`](#job) and [`ignoreJob`](#ignorejob)),
 3. `matrix-` followed by a hash of the matrix values, if the job uses a matrix (see
    [`matrix`](#matrix) and [`ignoreMatrix`](#ignorematrix)),
@@ -96,15 +97,15 @@ Each cache has its own key, made of the following parts, separated by `-`:
 Parts that don't apply are left out. For example, the sbt cache of a `test` job with a matrix
 gets a key like
 ```text
-sbt-ivy2-cache-test-matrix-<matrix hash>-<build files hash>
+sbt-ivy2-cache-linux-x64-test-matrix-<matrix hash>-<build files hash>
 ```
 
 When the job starts:
 - if a cache with that exact key exists, it is restored, the `cache-hit-…` output is `true`,
   and the cache isn't saved again at the end of the job, as it is up-to-date already,
 - else, the action falls back on the most recent cache whose key shares the longest prefix with
-  that key, dropping the parts above from the end one by one (`sbt-ivy2-cache-test-matrix-<matrix hash>-`,
-  then `sbt-ivy2-cache-test-`, then `sbt-ivy2-cache-`). The `cache-hit-…` output is `false`,
+  that key, dropping the parts above from the end one by one (`sbt-ivy2-cache-linux-x64-test-matrix-<matrix hash>-`,
+  then `sbt-ivy2-cache-linux-x64-test-`, then `sbt-ivy2-cache-linux-x64-`). The `cache-hit-…` output is `false`,
   and, as new dependencies may get downloaded during the job, the cache is saved under the new
   key at the end of the job. Set [`disableFallback`](#disablefallback) to `true` to start from
   an empty cache instead.
