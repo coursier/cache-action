@@ -68,13 +68,17 @@ Files that sbt and Ivy re-generate on each run (`~/.ivy2/cache/**/ivydata-*.prop
 ### mill: `~/.cache/mill`
 
 Cached when any of these mill files are found:
-- `.mill-version`
-- `mill` (the mill launcher script)
+- `build.mill`, `build.mill.yaml`, `build.mill.scala`
+- `mill-build/build.mill`, `mill-build/build.mill.yaml`
+- `.mill-*` (like `.mill-version`)
+- `.config/mill-*` (like `.config/mill-version`)
+- `mill`, `mill.bat`, `millw` (mill launcher scripts)
 
 or when files matching [`extraMillFiles`](#extramillfiles) are found.
 
 Its key also takes into account the mill build definition files: `*.mill`, `*.mill.yaml`,
-`*.mill.scala` and `*.sc` (for older mill versions).
+`*.mill.scala`, `**/package.mill`, `**/package.mill.yaml`, `**/package.mill.scala`, and `*.sc`
+(for older mill versions).
 
 ## How cache keys work
 
