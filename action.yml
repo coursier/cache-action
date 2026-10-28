@@ -63,6 +63,23 @@ inputs:
       See extraFiles for more details.
       The content of extraHashedContent is hashed along with the build files.
     default: ''
+  read-cs-cache-files:
+    required: false
+    description: >
+      Set 'false' to ignore the .github/cs-cache-files file. When that file exists, each of its
+      lines is a path or glob added to extraFiles.
+    default: 'true'
+  extraCoursierKey:
+    required: false
+    description: >
+      Extra value to be appended to the coursier cache key.
+      See extraFiles for more details.
+    default: ''
+  extraCoursierHashedContent:
+    required: false
+    description: >
+      Extra content to take into account in the coursier cache key. Same format as extraHashedContent.
+    default: ''
   extraSbtFiles:
     required: false
     description: >

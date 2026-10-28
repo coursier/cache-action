@@ -89,7 +89,7 @@ Each cache has its own key, made of the following parts, separated by `-`:
 3. `matrix-` followed by a hash of the matrix values, if the job uses a matrix (see
    [`matrix`](#matrix) and [`ignoreMatrix`](#ignorematrix)),
 4. [`extraKey`](#extrakey), if set,
-5. the cache-specific extra key ([`extraSbtKey`](#extrasbtkey-extramillkey), …), if set,
+5. the cache-specific extra key ([`extraSbtKey`](#extracoursierkey-extrasbtkey-extramillkey), …), if set,
 6. a hash of the build files [listed above](#cached-directories), of [`extraFiles`](#extrafiles),
    and of [`extraHashedContent`](#extrahashedcontent).
 
@@ -127,9 +127,10 @@ All inputs are optional.
 | [`extraSbtFiles`](#extrasbtfiles) | | Extra sbt build files |
 | [`extraMillFiles`](#extramillfiles) | | Extra mill build files |
 | [`extraKey`](#extrakey) | | Extra value added to all cache keys |
-| [`extraSbtKey`, `extraMillKey`](#extrasbtkey-extramillkey) | | Extra value added to a single cache key |
+| [`extraCoursierKey`, `extraSbtKey`, `extraMillKey`](#extracoursierkey-extrasbtkey-extramillkey) | | Extra value added to a single cache key |
 | [`extraHashedContent`](#extrahashedcontent) | | Extra content to hash in all cache keys |
-| [`extraSbtHashedContent`, `extraMillHashedContent`](#extrasbthashedcontent-extramillhashedcontent) | | Extra content to hash in a single cache key |
+| [`extraCoursierHashedContent`, `extraSbtHashedContent`, `extraMillHashedContent`](#extracoursierhashedcontent-extrasbthashedcontent-extramillhashedcontent) | | Extra content to hash in a single cache key |
+| [`read-cs-cache-files`](#read-cs-cache-files) | `true` | Read extra files from `.github/cs-cache-files` |
 | [`job`](#job) | `${{ github.job }}` | Job name, added to the cache keys |
 | [`matrix`](#matrix) | `${{ toJson(matrix) }}` | Matrix values, hashed in the cache keys |
 | [`ignoreJob`](#ignorejob) | `false` | Leave the job name out of the cache keys |
@@ -179,7 +180,8 @@ relative to the repository root, not to [`root`](#root).
 ```
 
 Files can also be listed, one path or glob per line, in a `.github/cs-cache-files` file in your
-repository. If that file exists, its entries are added to `extraFiles`.
+repository. If that file exists, its entries are added to `extraFiles`, unless
+[`read-cs-cache-files`](#read-cs-cache-files) is `false`.
 
 ### `extraSbtFiles`
 
@@ -199,9 +201,9 @@ Use it to have separate caches for jobs that would get the same keys otherwise. 
 don't fit in a cache key, or that you'd rather not show in the logs, use
 [`extraHashedContent`](#extrahashedcontent).
 
-### `extraSbtKey`, `extraMillKey`
+### `extraCoursierKey`, `extraSbtKey`, `extraMillKey`
 
-Same as [`extraKey`](#extrakey), but only added to the key of the sbt or mill cache.
+Same as [`extraKey`](#extrakey), but only added to the key of the coursier, sbt or mill cache.
 
 ### `extraHashedContent`
 
@@ -209,10 +211,17 @@ Extra content to take into account in the keys of all caches. It is hashed along
 files, so changing it gives new caches, initialized from the previous ones
 (see [How cache keys work](#how-cache-keys-work)).
 
-### `extraSbtHashedContent`, `extraMillHashedContent`
+### `extraCoursierHashedContent`, `extraSbtHashedContent`, `extraMillHashedContent`
 
 Same as [`extraHashedContent`](#extrahashedcontent), but only taken into account in the key of the
-sbt or mill cache, and in the key of the coursier cache.
+coursier cache (`extraCoursierHashedContent`), or in the key of the sbt or mill cache and in the
+key of the coursier cache (`extraSbtHashedContent`, `extraMillHashedContent`).
+
+### `read-cs-cache-files`
+
+Default: `true`
+
+Set to `false` to ignore the `.github/cs-cache-files` file (see [`extraFiles`](#extrafiles)).
 
 ### `job`
 
