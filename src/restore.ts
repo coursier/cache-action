@@ -1,11 +1,10 @@
 import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as glob from '@actions/glob'
-import {createHash} from 'crypto'
 import {stat} from 'fs'
-import {readFile, stat as statFile} from 'fs/promises'
-import * as path from 'path'
+import {readFile} from 'fs/promises'
 import {cacheModeAllowsWrite, setupCacheMode} from './cacheMode.js'
+import {cacheKeys} from './keys.js'
 
 // This should catch some ETIMEDOUT errors seen in the restore cache step.
 // Same as https://github.com/actions/cache/blob/0638051e9af2c23d10bb70fa9beffcad6cff9ce3/src/save.ts#L10
@@ -20,46 +19,6 @@ function getCachePath(): string {
     return '~\\AppData\\Local\\Coursier\\Cache\\v1'
   if (process.platform === 'darwin') return '~/Library/Caches/Coursier/v1'
   return '~/.cache/coursier/v1'
-}
-
-function withLfLineEndings(content: Buffer): Buffer {
-  if (!content.includes('\r\n')) return content
-  // latin1 maps each byte to a single char and back, so that only the CRLFs change
-  return Buffer.from(
-    content.toString('latin1').replaceAll('\r\n', '\n'),
-    'latin1'
-  )
-}
-
-// Same as glob.hashFiles, except that CRLF line endings are hashed as LF ones, so that
-// checking files out with or without converting line endings (core.autocrlf on Windows)
-// gives the same keys. Files with LF line endings get the same hash as with glob.hashFiles.
-// hashedContent, if non-empty, is hashed as if it were the content of an extra file, coming
-// after the matched ones.
-async function hashContent(
-  files: string[],
-  hashedContent: string
-): Promise<string> {
-  const workspace = process.env['GITHUB_WORKSPACE'] ?? process.cwd()
-  const result = createHash('sha256')
-  let hasMatch = false
-  const patterns = files.filter(Boolean)
-  if (patterns.length > 0) {
-    const globber = await glob.create(patterns.join('\n'))
-    for await (const file of globber.globGenerator()) {
-      if (!file.startsWith(`${workspace}${path.sep}`)) continue
-      if ((await statFile(file)).isDirectory()) continue
-      const content = withLfLineEndings(await readFile(file))
-      result.update(createHash('sha256').update(content).digest())
-      hasMatch = true
-    }
-  }
-  if (hashedContent.length > 0) {
-    const content = withLfLineEndings(Buffer.from(hashedContent))
-    result.update(createHash('sha256').update(content).digest())
-    hasMatch = true
-  }
-  return hasMatch ? result.digest('hex') : ''
 }
 
 async function doGlob(globs: string[]): Promise<string[]> {
@@ -85,37 +44,17 @@ async function restoreCache(
   // Unlike the coursier cache, whose path depends on the OS, and whose content
   // can be shared across CPU architectures, the other caches have the same paths
   // on all platforms, but may contain platform-specific files (native launchers, …)
-  let key = platformSpecific ? `${id}-${process.platform}-${process.arch}` : id
-  const restoreKeys: string[] = []
-
-  if (job.length > 0) {
-    restoreKeys.push(`${key}-`)
-    key = `${key}-${job}`
-  }
-
-  if (matrixHashedContent.length > 0) {
-    restoreKeys.push(`${key}-`)
-    const matrixHash = await hashContent([], matrixHashedContent)
-    key = `${key}-matrix-${matrixHash}`
-  }
-
-  if (extraSharedKey.length > 0) {
-    restoreKeys.push(`${key}-`)
-    key = `${key}-${extraSharedKey}`
-  }
-
-  if (extraKey.length > 0) {
-    restoreKeys.push(`${key}-`)
-    key = `${key}-${extraKey}`
-  }
-
-  if (inputFiles.length > 0 || extraHashedContent.length > 0) {
-    restoreKeys.push(`${key}-`)
-    const hash = await hashContent(inputFiles, extraHashedContent)
-    key = `${key}-${hash}`
-  }
-
-  restoreKeys.reverse()
+  const {key, restoreKeys} = await cacheKeys(
+    platformSpecific ? `${id}-${process.platform}-${process.arch}` : id,
+    {
+      job,
+      matrixHashedContent,
+      extraSharedKey,
+      extraKey,
+      inputFiles,
+      extraHashedContent
+    }
+  )
 
   core.info(`${id} cache keys${disableFallback ? ' (fallback disabled)' : ''}:`)
   core.info(`  ${key}`)
