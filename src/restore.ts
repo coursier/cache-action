@@ -3,7 +3,7 @@ import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 import {createHash} from 'crypto'
 import {stat} from 'fs'
-import {readFile, stat as statFile, unlink, writeFile} from 'fs/promises'
+import {readFile, stat as statFile} from 'fs/promises'
 import * as path from 'path'
 import {cacheModeAllowsWrite, setupCacheMode} from './cacheMode.js'
 
@@ -34,49 +34,37 @@ function withLfLineEndings(content: Buffer): Buffer {
 // Same as glob.hashFiles, except that CRLF line endings are hashed as LF ones, so that
 // checking files out with or without converting line endings (core.autocrlf on Windows)
 // gives the same keys. Files with LF line endings get the same hash as with glob.hashFiles.
-async function doHashFiles(files: string[]): Promise<string> {
-  const globber = await glob.create(files.filter(Boolean).join('\n'))
+// hashedContent, if non-empty, is hashed as if it were the content of an extra file, coming
+// after the matched ones.
+async function hashContent(
+  files: string[],
+  hashedContent: string
+): Promise<string> {
   const workspace = process.env['GITHUB_WORKSPACE'] ?? process.cwd()
   const result = createHash('sha256')
   let hasMatch = false
-  for await (const file of globber.globGenerator()) {
-    if (!file.startsWith(`${workspace}${path.sep}`)) continue
-    if ((await statFile(file)).isDirectory()) continue
-    const content = withLfLineEndings(await readFile(file))
-    result.write(createHash('sha256').update(content).digest())
+  const patterns = files.filter(Boolean)
+  if (patterns.length > 0) {
+    const globber = await glob.create(patterns.join('\n'))
+    for await (const file of globber.globGenerator()) {
+      if (!file.startsWith(`${workspace}${path.sep}`)) continue
+      if ((await statFile(file)).isDirectory()) continue
+      const content = withLfLineEndings(await readFile(file))
+      result.update(createHash('sha256').update(content).digest())
+      hasMatch = true
+    }
+  }
+  if (hashedContent.length > 0) {
+    const content = withLfLineEndings(Buffer.from(hashedContent))
+    result.update(createHash('sha256').update(content).digest())
     hasMatch = true
   }
-  result.end()
   return hasMatch ? result.digest('hex') : ''
 }
 
 async function doGlob(globs: string[]): Promise<string[]> {
   const globber = await glob.create(globs.join('\n'))
   return globber.glob()
-}
-
-async function hashContent(
-  inputFiles: string[],
-  hashedContent: string
-): Promise<string> {
-  let hash = ''
-  let allInputFiles = inputFiles
-
-  const tmpFilePath = '.tmp-cs-cache-key'
-
-  if (hashedContent.length !== 0) {
-    await writeFile(tmpFilePath, hashedContent)
-
-    allInputFiles = inputFiles.concat([tmpFilePath])
-  }
-
-  hash = await doHashFiles(allInputFiles)
-
-  if (hashedContent.length !== 0) {
-    await unlink(tmpFilePath)
-  }
-
-  return hash
 }
 
 async function restoreCache(
