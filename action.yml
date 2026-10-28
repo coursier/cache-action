@@ -1,5 +1,5 @@
 name: 'coursier-cache-action'
-description: 'Restores and saves the coursier cache'
+description: 'Save and restore the coursier, sbt, mill and Ammonite caches of Scala builds'
 author: 'Alexandre Archambault'
 branding:
   icon: 'arrow-down'
@@ -8,7 +8,7 @@ inputs:
   root:
     required: false
     description: >
-      Root directory containing build definition sources (build.sbt, build.mill, etc.)
+      Root directory containing build definition sources (build.sbt, build.mill, etc.).
       If the sbt or mill build definition files are in a sub-directory, pass the path to this
       sub-directory here.
     default: '.'
@@ -37,29 +37,30 @@ inputs:
   extraFiles:
     required: false
     description: >
-      Extra files to take into account in the cache key.
-      By default, sbt build definition files (*.sbt, project/**.{scala,sbt}, project/build.properties) and
-      mill build definition files (*.mill, ./mill) are hashed to uniquely identify the cached data. Upon
+      Extra files to take into account in the keys of all caches.
+      By default, sbt build definition files (*.sbt, project/**.{scala,sbt}, project/build.properties),
+      mill build definition files (*.mill, *.mill.yaml, *.mill.scala, *.sc, .mill-version, ./mill),
+      and Ammonite scripts (*.sc, */*.sc) are hashed to uniquely identify the cached data. Upon
       cache restoration, if an exact match is found, the cache is not saved again at the end of the job.
-      In case of no exact match, it is assumed new files may have been fetched; the previous cache for the
-      current OS, if any, is restored, but a new cache is persisted with a new key at the end of the job.
+      In case of no exact match, it is assumed new files may have been fetched; the closest previous cache
+      (same job and matrix values if possible), if any, is restored, but a new cache is persisted with a new key at the end of the job.
       To take into account extra files in the cache key, pass via extraFiles either
       - a single path as a string
       - multiple paths in a JSON array, encoded in a string
-      Blobs are accepted (processed by [@actions/glob](https://www.npmjs.com/package/@actions/glob)).
+      Globs are accepted (processed by [@actions/glob](https://www.npmjs.com/package/@actions/glob)).
     default: ''
   extraKey:
     required: false
     description: >
-      Extra value to be appended to the coursier cache key.
+      Extra value to be appended to the keys of all caches.
       See extraFiles for more details.
     default: ''
   extraHashedContent:
     required: false
     description: >
-      Extra content to take into account in the cache key.
+      Extra content to take into account in the keys of all caches.
       See extraFiles for more details.
-      The content of extraHashedContent is taken into account in the hash for the coursier cache key.
+      The content of extraHashedContent is hashed along with the build files.
     default: ''
   extraSbtFiles:
     required: false
@@ -112,12 +113,12 @@ inputs:
   ignoreJob:
     required: false
     description: >
-      Set 'true' if you don't want to use a job id as part of cache key.
+      Set 'true' if you don't want to use the job id as part of the cache keys.
     default: 'false'
   ignoreMatrix:
     required: false
     description: >
-      Set 'true' if you don't want to use a matrix jobs as part of cache key.
+      Set 'true' if you don't want to use the matrix values as part of the cache keys.
     default: 'false'
   ignoreAmmonite:
     required: false
@@ -146,11 +147,11 @@ outputs:
   cache-hit-coursier:
     description: 'A boolean value to indicate a match was found for the coursier cache'
   cache-hit-sbt-ivy2-cache:
-    description: 'A boolean value to indicate a match was found for the sbt-ivy2-cache cache'
+    description: 'A boolean value to indicate a match was found for the sbt cache (~/.sbt and ~/.ivy2/cache)'
   cache-hit-mill:
     description: 'A boolean value to indicate a match was found for the mill cache'
   cache-hit-ammonite:
-    description: 'A boolean value to indicate a match was found for the ammonite cache'
+    description: 'A boolean value to indicate a match was found for the Ammonite cache'
 runs:
   using: 'node24'
   main: 'dist/restore/index.js'

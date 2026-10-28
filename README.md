@@ -1,151 +1,287 @@
 # coursier cache action
 
-A GitHub action to save / restore the coursier / sbt / mill / Ammonite caches of your build.
+A GitHub action that saves and restores the caches of Scala builds: the
+[coursier](https://get-coursier.io) cache, and, depending on the build tool your repository uses,
+the [sbt](https://www.scala-sbt.org) or [mill](https://mill-build.org) caches.
+
+It looks at your build files to decide which caches to handle, and derives the cache keys from
+their content, so that the caches are updated when your build (and so, likely, its dependencies)
+changes, and only then.
 
 ## Usage
 
-Add a `coursier/cache-action@v7` step to your YAML workflow, like
+Add a `coursier/cache-action@v8` step to your workflow, after checking out your repository and
+before running your build:
+
 ```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: coursier/cache-action@v7
+      - uses: actions/checkout@v7
+      - uses: coursier/cache-action@v8
+      - run: sbt test
 ```
+
+The caches are restored when the step runs, and saved at the end of the job, if the job succeeds.
+
+No configuration is needed in most cases. The [inputs](#inputs) let you
+- point the action to a build in a sub-directory ([`root`](#root)),
+- take more files or values into account in the cache keys ([`extraFiles`](#extrafiles), [`extraKey`](#extrakey), …),
+- restrict when caches are restored or saved ([`cacheMode`](#cachemode), [`disableFallback`](#disablefallback)).
 
 ## Cached directories
 
+| Cache | Directories | Cached when | Output |
+|-------|-------------|-------------|--------|
+| [Coursier](#coursier-cache) | `~/.cache/coursier/v1` (Linux), `~/Library/Caches/Coursier/v1` (macOS), `~\AppData\Local\Coursier\Cache\v1` (Windows) | Always | `cache-hit-coursier` |
+| [sbt](#sbt-sbt-and-ivy2cache) | `~/.sbt`, `~/.ivy2/cache` | sbt build files are found | `cache-hit-sbt-ivy2-cache` |
+| [mill](#mill-cachemill) | `~/.cache/mill` | mill files are found | `cache-hit-mill` |
+
+Build files are looked for in the [`root`](#root) directory, which is the root of the repository
+by default.
+
 ### Coursier cache
 
-Always cached. Only the cache itself is (`v1`, like `~/.cache/coursier/v1` on Linux), not the
-directories next to it, like the archive cache (`arc`, whose archives get extracted again from
-the ones in `v1`) or the privileged archive cache (`priv`, that has files only root can read).
+Always cached. Only the cache itself is (`v1`, in the
+[default OS-dependent location](https://get-coursier.io/docs/cache.html#default-location), or
+wherever [`path`](#path) points), not the directories next to it, like the archive cache (`arc`,
+whose archives get extracted again from the ones in `v1`) or the privileged archive cache (`priv`,
+that has files only root can read).
 
-The build files hashed in its cache key are hashed with LF line endings, so that checking them
-out with CRLF ones (`core.autocrlf`, on Windows) doesn't change the key.
+Its key takes into account the build files of all the caches below (sbt and mill ones), as well
+as [`extraFiles`](#extrafiles).
 
-Add files to take into account in its cache key via [`extraFiles`](#extrafiles).
+### sbt: `~/.sbt` and `~/.ivy2/cache`
 
-### `~/.sbt` and `~/.ivy2/cache`
+Cached when any of these sbt files are found:
+- `*.sbt`
+- `project/**.sbt`
+- `project/**.scala`
+- `project/build.properties`
 
-Cached when sbt files are found (any of `*.sbt`, `project/**.scala`, `project/**.sbt`, `project/build.properties`).
+or when files matching [`extraSbtFiles`](#extrasbtfiles) are found.
 
-Add files to take into account in its cache key via [`extraSbtFiles`](#extrasbtfiles).
+Files that sbt and Ivy re-generate on each run (`~/.ivy2/cache/**/ivydata-*.properties`, and
+`~/.sbt/**/*.lock`) are removed before saving the cache.
 
-### `~/.cache/mill`
+### mill: `~/.cache/mill`
 
-Cached when mill files are found (any of `.mill-version`, `./mill`).
+Cached when any of these mill files are found:
+- `.mill-version`
+- `mill` (the mill launcher script)
 
-Add files to take into account in its cache key via [`extraMillFiles`](#extramillfiles).
+or when files matching [`extraMillFiles`](#extramillfiles) are found.
 
-### `~/.ammonite`
+Its key also takes into account the mill build definition files: `*.mill`, `*.mill.yaml`,
+`*.mill.scala` and `*.sc` (for older mill versions).
 
-Cached when Ammonite scripts are found (any of `*.sc`, `*/*.sc`).
+## How cache keys work
 
-Add files to take into account in its cache key via [`ammoniteScripts`](#ammonitescripts).
+Each cache has its own key, made of the following parts, separated by `-`:
 
-## Parameters
+1. the cache name (`coursier`, `sbt-ivy2-cache` or `mill`),
+2. the job id (see [`job`](#job) and [`ignoreJob`](#ignorejob)),
+3. `matrix-` followed by a hash of the matrix values, if the job uses a matrix (see
+   [`matrix`](#matrix) and [`ignoreMatrix`](#ignorematrix)),
+4. [`extraKey`](#extrakey), if set,
+5. the cache-specific extra key ([`extraSbtKey`](#extrasbtkey-extramillkey), …), if set,
+6. a hash of the build files [listed above](#cached-directories), of [`extraFiles`](#extrafiles),
+   and of [`extraHashedContent`](#extrahashedcontent).
+
+Parts that don't apply are left out. For example, the sbt cache of a `test` job with a matrix
+gets a key like
+```text
+sbt-ivy2-cache-test-matrix-<matrix hash>-<build files hash>
+```
+
+When the job starts:
+- if a cache with that exact key exists, it is restored, the `cache-hit-…` output is `true`,
+  and the cache isn't saved again at the end of the job, as it is up-to-date already,
+- else, the action falls back on the most recent cache whose key shares the longest prefix with
+  that key, dropping the parts above from the end one by one (`sbt-ivy2-cache-test-matrix-<matrix hash>-`,
+  then `sbt-ivy2-cache-test-`, then `sbt-ivy2-cache-`). The `cache-hit-…` output is `false`,
+  and, as new dependencies may get downloaded during the job, the cache is saved under the new
+  key at the end of the job. Set [`disableFallback`](#disablefallback) to `true` to start from
+  an empty cache instead.
+
+Build files are hashed with LF line endings, so that checking them out with CRLF ones
+(`core.autocrlf`, on Windows) doesn't change the keys.
+
+Caches are only saved if the job succeeds, and only if the [cache mode](#cache-access-cache-mode)
+allows it.
+
+## Inputs
+
+All inputs are optional.
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| [`root`](#root) | `.` | Directory containing the build definition |
+| [`path`](#path) | | Path of the coursier cache, if not the default one |
+| [`extraFiles`](#extrafiles) | | Extra files to hash in all cache keys |
+| [`extraSbtFiles`](#extrasbtfiles) | | Extra sbt build files |
+| [`extraMillFiles`](#extramillfiles) | | Extra mill build files |
+| [`extraKey`](#extrakey) | | Extra value added to all cache keys |
+| [`extraSbtKey`, `extraMillKey`](#extrasbtkey-extramillkey) | | Extra value added to a single cache key |
+| [`extraHashedContent`](#extrahashedcontent) | | Extra content to hash in all cache keys |
+| [`extraSbtHashedContent`, `extraMillHashedContent`](#extrasbthashedcontent-extramillhashedcontent) | | Extra content to hash in a single cache key |
+| [`job`](#job) | `${{ github.job }}` | Job name, added to the cache keys |
+| [`matrix`](#matrix) | `${{ toJson(matrix) }}` | Matrix values, hashed in the cache keys |
+| [`ignoreJob`](#ignorejob) | `false` | Leave the job name out of the cache keys |
+| [`ignoreMatrix`](#ignorematrix) | `false` | Leave the matrix values out of the cache keys |
+| [`disableFallback`](#disablefallback) | `false` | Only restore caches whose key matches exactly |
+| [`cacheMode`](#cachemode) | | Restrict cache access for this step (`read`, `write`, `write-only`, `none`) |
 
 ### `root`
 
-*Optional* Root directory containing build definition sources (`build.sbt`, `build.sc`, etc.)
+Directory containing the build definition sources (`build.sbt`, `build.mill`, etc.), relative to
+the repository root. Defaults to the repository root.
 
 If the sbt or mill build definition files are in a sub-directory, pass the path to this
-sub-directory here.
+sub-directory here:
+
+```yaml
+- uses: coursier/cache-action@v8
+  with:
+    root: backend
+```
 
 ### `path`
 
-*Optional* Override for the path of the coursier cache.
+Path of the coursier cache.
 
-By default, the coursier cache is assumed to be in the [default OS-dependent location](https://get-coursier.io/docs/cache.html#default-location).
-Set this input to override that. Note that this action will also set the `COURSIER_CACHE` environment variable
-if an override is specified, so that you don't have to set it yourself.
+By default, the coursier cache is assumed to be in the
+[default OS-dependent location](https://get-coursier.io/docs/cache.html#default-location).
+Set this input to override that. The action then also sets the `COURSIER_CACHE` environment
+variable for the subsequent steps, so that you don't have to set it yourself.
 
 ### `extraFiles`
 
-*Optional* Extra files to take into account in the cache key.
+Extra files to take into account in the keys of all caches.
 
-By default, sbt build definition files (`*.sbt`, `project/**.{scala,sbt}`, `project/build.properties`) and
-mill build definition files (`*.sc`, `./mill`) are hashed to uniquely identify the cached data. Upon
-cache restoration, if an exact match is found, the cache is not saved again at the end of the job.
-In case of no exact match, it is assumed new files may have been fetched; the previous cache for the
-current OS, if any, is restored, but a new cache is persisted with a new key at the end of the job.
+Pass either
+- a single path or glob as a string,
+- multiple paths or globs in a JSON array, encoded in a string.
 
-To take into account extra files in the cache key, pass via `extraFiles` either
-- a single path as a string
-- multiple paths in a JSON array, encoded in a string
+Globs are processed by [@actions/glob](https://www.npmjs.com/package/@actions/glob). Paths are
+relative to the repository root, not to [`root`](#root).
 
-Blobs are accepted (processed by [@actions/glob](https://www.npmjs.com/package/@actions/glob)).
+```yaml
+- uses: coursier/cache-action@v8
+  with:
+    extraFiles: '["dependencies.json", "scripts/*.sh"]'
+```
+
+Files can also be listed, one path or glob per line, in a `.github/cs-cache-files` file in your
+repository. If that file exists, its entries are added to `extraFiles`.
 
 ### `extraSbtFiles`
 
-*Optional* Extra sbt files to take into account in the sbt cache key. Same format as extraFiles.
+Extra sbt build files, same format as [`extraFiles`](#extrafiles). They are taken into account in
+the sbt and coursier cache keys, and finding any of them enables the sbt cache.
 
 ### `extraMillFiles`
 
-*Optional* Extra mill files to take into account in the mill cache key. Same format as extraFiles.
-
-### `ammoniteScripts`
-
-*Optional* Extra Ammonite scripts to take into account in the Ammonite cache key. Same format as extraFiles.
+Extra mill build files, same format as [`extraFiles`](#extrafiles). They are taken into account in
+the mill and coursier cache keys, and finding any of them enables the mill cache.
 
 ### `extraKey`
 
-*Optional*
+Extra value added as is to the keys of all caches. See [How cache keys work](#how-cache-keys-work).
 
-Extra value to be appended to the coursier cache key.
+Use it to have separate caches for jobs that would get the same keys otherwise. For values that
+don't fit in a cache key, or that you'd rather not show in the logs, use
+[`extraHashedContent`](#extrahashedcontent).
 
-See `extraFiles` for more details.
+### `extraSbtKey`, `extraMillKey`
+
+Same as [`extraKey`](#extrakey), but only added to the key of the sbt or mill cache.
 
 ### `extraHashedContent`
 
-*Optional*
+Extra content to take into account in the keys of all caches. It is hashed along with the build
+files, so changing it gives new caches, initialized from the previous ones
+(see [How cache keys work](#how-cache-keys-work)).
 
-Extra content to take into account in the cache key.
+### `extraSbtHashedContent`, `extraMillHashedContent`
 
-See `extraFiles` for more details.
+Same as [`extraHashedContent`](#extrahashedcontent), but only taken into account in the key of the
+sbt or mill cache, and in the key of the coursier cache.
 
-The content of `extraHashedContent` is taken into account in the hash for the coursier cache key.
+### `job`
+
+Job name, added to the cache keys, so that each job has its own caches. Defaults to the id of the
+current job (`${{ github.job }}`). See also [`ignoreJob`](#ignorejob).
+
+### `matrix`
+
+Matrix values, hashed and added to the cache keys, so that each instance of a matrix job
+(one per Scala version, JDK, OS, …) has its own caches, and those caches don't collide.
+Defaults to the matrix values of the current job (`${{ toJson(matrix) }}`), so that you don't
+need to set it in most cases. See also [`ignoreMatrix`](#ignorematrix).
 
 ### `ignoreJob`
 
-*Optional*
-
 Default: `false`
 
-Set `true` if you don't want to use a job id as part of cache key.
+Set to `true` to leave the job name out of the cache keys, so that different jobs share their
+caches.
 
 ### `ignoreMatrix`
 
-*Optional*
-
 Default: `false`
 
-Set `true` if you don't want to use a matrix jobs as part of cache key.
-
-### `ignoreAmmonite`
-
-*Optional*
-
-Default: `false`
-
-Set `true` to skip saving and restoring the Ammonite cache, regardless of whether the repository contains `.sc` scripts.
+Set to `true` to leave the matrix values out of the cache keys, so that the instances of a matrix
+job share their caches.
 
 ### `disableFallback`
 
-*Optional*
-
 Default: `false`
 
-Set `true` to disable falling back to a less specific cache key when there is no exact cache hit. By default, if no exact cache match is found, the action will restore from a more general cache key (e.g. from a different job or build configuration). Disabling this prevents unintended cache sharing across jobs or matrix instances that have different dependency sets.
+Set to `true` to disable falling back to a less specific cache key when there is no exact cache
+hit. By default, if no exact cache match is found, the action restores a cache with a more general
+key (e.g. from a different job or build configuration, see
+[How cache keys work](#how-cache-keys-work)). Disabling this prevents unintended cache sharing
+across jobs or matrix instances that have different dependency sets.
 
 ### `cacheMode`
 
-*Optional*
-
 Default: empty (use the workflow / job `cache-mode` as is)
 
-Cache access for this step: one of `read`, `write`, `write-only`, or `none`. This can only narrow the access
-granted by the workflow or job [`cache-mode`](#cache-access-cache-mode), never widen it. For example, pass `read`
-to restore caches without saving them.
+Cache access for this step: one of `read`, `write`, `write-only`, or `none`. This can only narrow
+the access granted by the workflow or job [`cache-mode`](#cache-access-cache-mode), never widen it.
+For example, pass `read` to restore caches without saving them.
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `cache-hit-coursier` | `true` if the coursier cache was restored from an exact key match |
+| `cache-hit-sbt-ivy2-cache` | `true` if the sbt cache was restored from an exact key match |
+| `cache-hit-mill` | `true` if the mill cache was restored from an exact key match |
+
+Each output is `false` when no cache or only a [fallback](#how-cache-keys-work) one was restored,
+and empty when the corresponding cache isn't handled (no sbt files for `cache-hit-sbt-ivy2-cache`,
+for example).
+
+### Skipping steps based on cache-hit
+
+Using the `cache-hit-…` outputs, subsequent steps can be skipped when a cache was restored from an
+exact key match. Give the action step an `id`, and refer to it in the `if` condition of the steps
+to skip:
+
+```yaml
+steps:
+  - uses: actions/checkout@v7
+
+  - uses: coursier/cache-action@v8
+    id: coursier-cache
+
+  - name: Fetch dependencies
+    if: steps.coursier-cache.outputs.cache-hit-coursier != 'true'
+    run: sbt +update
+```
 
 ## Cache access (`cache-mode`)
 
@@ -176,8 +312,8 @@ jobs:
     runs-on: ubuntu-latest
     cache-mode: read
     steps:
-      - uses: actions/checkout@v5
-      - uses: coursier/cache-action@v7
+      - uses: actions/checkout@v7
+      - uses: coursier/cache-action@v8
       - run: sbt test
 ```
 
@@ -186,10 +322,10 @@ To restrict only this action, and leave other caching steps of the job unaffecte
 
 ```yaml
 steps:
-  - uses: actions/checkout@v5
-  - uses: coursier/cache-action@v7
+  - uses: actions/checkout@v7
+  - uses: coursier/cache-action@v8
     with:
-      cacheMode: read   # restore the coursier / sbt / mill / Ammonite caches, but never save them
+      cacheMode: read   # restore the coursier / sbt / mill caches, but never save them
 ```
 
 `cacheMode` can only narrow what the workflow or job grants. Combining `cacheMode: read` with a job
@@ -212,8 +348,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: coursier/cache-action@v7
+      - uses: actions/checkout@v7
+      - uses: coursier/cache-action@v8
         with:
           cacheMode: ${{ github.ref == 'refs/heads/main' && 'write' || 'read' }}
       - run: sbt test
@@ -221,7 +357,8 @@ jobs:
 
 On `main`, the caches are restored, then saved if their key changed. In pull requests (`github.ref` is
 `refs/pull/<number>/merge` there), the caches of `main` are restored, but nothing is saved. Pull requests whose build
-files differ from `main` fall back on the closest cache from `main`, as described in [`extraFiles`](#extrafiles).
+files differ from `main` fall back on the closest cache from `main`, as described in
+[How cache keys work](#how-cache-keys-work).
 
 GitHub doesn't document `${{ … }}` expressions as supported in the `cache-mode` key, so getting the same behavior with
 it means separate workflows, such as one triggered on `push` to `main` (where the default is `write`) and another one
@@ -229,59 +366,38 @@ triggered on `pull_request` that sets `cache-mode: read` at the top level.
 
 ## Cache invalidation
 
-To manually invalidate the cache without changing your build files, set the `COURSIER_CACHE_ACTION_CACHE_VERSION`
-environment variable in your workflow. Changing its value produces a different cache key across all
-cache types, so the old cache is ignored and a fresh one is created.
+To force the caches to be saved again without changing your build files, set the
+`COURSIER_CACHE_ACTION_CACHE_VERSION` environment variable in your workflow. Changing its value
+changes the keys of all caches, so that they're saved under new keys at the end of the job.
+
+Like for any other key change, the previous caches are still restored as a
+[fallback](#how-cache-keys-work) when the job starts. To start from empty caches, also set
+[`disableFallback`](#disablefallback) to `true` for one run.
 
 The variable can be set at the workflow level so that it applies to every step:
 
 ```yaml
 env:
-  COURSIER_CACHE_ACTION_CACHE_VERSION: 1   # increment this value to invalidate the cache
+  COURSIER_CACHE_ACTION_CACHE_VERSION: 1   # increment this value to invalidate the caches
 
-steps:
-  - uses: actions/checkout@v5
-  - uses: coursier/cache-action@v7
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: coursier/cache-action@v8
 ```
 
 Or it can be scoped to only the `coursier/cache-action` step:
 
 ```yaml
 steps:
-  - uses: actions/checkout@v5
-  - uses: coursier/cache-action@v7
+  - uses: actions/checkout@v7
+  - uses: coursier/cache-action@v8
     env:
-      COURSIER_CACHE_ACTION_CACHE_VERSION: 1   # increment this value to invalidate the cache
+      COURSIER_CACHE_ACTION_CACHE_VERSION: 1   # increment this value to invalidate the caches
 ```
 
-This is equivalent to passing the version as `extraHashedContent`, but more convenient because it
-can be set globally for the whole workflow (or even as a repository variable / secret) without
-touching the individual step configuration.
-
-## Outputs
-
-* `cache-hit-coursier` - A boolean value to indicate a match was found for the coursier cache
-* `cache-hit-sbt-ivy2-cache` - A boolean value to indicate a match was found for the sbt-ivy2-cache cache
-* `cache-hit-mill` - A boolean value to indicate a match was found for the mill cache
-* `cache-hit-ammonite` - A boolean value to indicate a match was found for the ammonite cache
-
-> See [Skipping steps based on cache-hit](#Skipping-steps-based-on-cache-hit) for info on using this output
-
-## Skipping steps based on cache-hit
-
-Using the `cache-hit-...` outputs above, subsequent steps can be skipped when a cache hit occurs on a given key.
-
-Example:
-```yaml
-steps:
-  - uses: actions/checkout@v5
-
-  - uses: coursier/cache-action@v7
-    id: coursier-cache
-
-  - name: Fetch Dependencies
-    if: steps.coursier-cache.outputs.cache-hit-coursier != 'true'
-    run: sbt +update
-```
-
-> Note: The `id` defined in `coursier/cache-action` must match the `id` in the `if` statement (i.e. `steps.[ID].outputs.cache-hit-coursier`)
+This is equivalent to passing the version as [`extraHashedContent`](#extrahashedcontent), but more
+convenient, as it can be set for the whole workflow (or even as a repository variable or secret)
+without touching the individual steps.

@@ -1,10 +1,9 @@
 {
-  "name": "typescript-action",
+  "name": "cache-action",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "TypeScript template action",
-  "main": "lib/main.js",
+  "description": "GitHub action that saves and restores the coursier, sbt and mill caches of Scala builds (Ammonite support is deprecated)",
   "scripts": {
     "build": "ncc build src/restore.ts --source-map --minify --out dist/restore && ncc build src/save.ts --source-map --minify --out dist/save",
     "format": "prettier --write **/*.ts",
@@ -16,14 +15,23 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/coursier/cache-action.git"
+  },
+  "homepage": "https://github.com/coursier/cache-action#readme",
+  "bugs": {
+    "url": "https://github.com/coursier/cache-action/issues"
   },
   "keywords": [
     "actions",
-    "node",
-    "setup"
+    "github-actions",
+    "cache",
+    "coursier",
+    "sbt",
+    "mill",
+    "ammonite",
+    "scala"
   ],
-  "author": "",
+  "author": "Alexandre Archambault",
   "license": "MIT",
   "dependencies": {
     "@actions/cache": "^6.3.0",
