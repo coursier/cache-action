@@ -186,6 +186,8 @@ async function restoreCoursierCache(
   if (userSpecifiedCachePath) {
     paths = [userSpecifiedCachePath]
     core.exportVariable('COURSIER_CACHE', userSpecifiedCachePath)
+  } else if (process.env['COURSIER_CACHE']) {
+    paths = [process.env['COURSIER_CACHE']]
   } else {
     paths = [getCachePath()]
   }

@@ -155,7 +155,8 @@ sub-directory here:
 
 Path of the coursier cache.
 
-By default, the coursier cache is assumed to be in the
+By default, the coursier cache is assumed to be at the location the `COURSIER_CACHE` environment
+variable points to, if it is set when the action runs, else in the
 [default OS-dependent location](https://get-coursier.io/docs/cache.html#default-location).
 Set this input to override that. The action then also sets the `COURSIER_CACHE` environment
 variable for the subsequent steps, so that you don't have to set it yourself.
