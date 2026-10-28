@@ -316,9 +316,7 @@ function readExtraFiles(variableName: string): string[] {
 }
 
 function readExtraKeys(variableName: string): string {
-  let extraFilesStr = core.getInput(variableName)
-  if (!extraFilesStr) extraFilesStr = ''
-  return extraFilesStr
+  return core.getInput(variableName)
 }
 
 function readExtraBoolean(variableName: string): boolean {
@@ -428,7 +426,6 @@ async function run(): Promise<void> {
   ]
     .concat(millLegacyGlobs)
     .concat(millSpecificGlobs)
-    .concat(extraMillFiles)
 
   const ammoniteGlobs = [`${root}*.sc`, `${root}*/*.sc`].concat(
     extraAmmoniteFiles
