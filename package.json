@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "GitHub action that saves and restores the coursier, sbt, mill and Ammonite caches of Scala builds",
+  "description": "GitHub action that saves and restores the coursier, sbt and mill caches of Scala builds (Ammonite support is deprecated)",
   "scripts": {
     "build": "ncc build src/restore.ts --source-map --minify --out dist/restore && ncc build src/save.ts --source-map --minify --out dist/save",
     "format": "prettier --write **/*.ts",

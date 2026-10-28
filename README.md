@@ -2,8 +2,7 @@
 
 A GitHub action that saves and restores the caches of Scala builds: the
 [coursier](https://get-coursier.io) cache, and, depending on the build tool your repository uses,
-the [sbt](https://www.scala-sbt.org), [mill](https://mill-build.org) and
-[Ammonite](https://ammonite.io) caches.
+the [sbt](https://www.scala-sbt.org) or [mill](https://mill-build.org) caches.
 
 It looks at your build files to decide which caches to handle, and derives the cache keys from
 their content, so that the caches are updated when your build (and so, likely, its dependencies)
@@ -38,7 +37,6 @@ No configuration is needed in most cases. The [inputs](#inputs) let you
 | [Coursier](#coursier-cache) | `~/.cache/coursier/v1` (Linux), `~/Library/Caches/Coursier/v1` (macOS), `~\AppData\Local\Coursier\Cache\v1` (Windows) | Always | `cache-hit-coursier` |
 | [sbt](#sbt-sbt-and-ivy2cache) | `~/.sbt`, `~/.ivy2/cache` | sbt build files are found | `cache-hit-sbt-ivy2-cache` |
 | [mill](#mill-cachemill) | `~/.cache/mill` | mill files are found | `cache-hit-mill` |
-| [Ammonite](#ammonite-ammonite) | `~/.ammonite` | Ammonite scripts are found | `cache-hit-ammonite` |
 
 Build files are looked for in the [`root`](#root) directory, which is the root of the repository
 by default.
@@ -51,8 +49,8 @@ wherever [`path`](#path) points), not the directories next to it, like the archi
 whose archives get extracted again from the ones in `v1`) or the privileged archive cache (`priv`,
 that has files only root can read).
 
-Its key takes into account the build files of all the caches below (sbt, mill, and Ammonite ones,
-unless [`ignoreAmmonite`](#ignoreammonite) is set), as well as [`extraFiles`](#extrafiles).
+Its key takes into account the build files of all the caches below (sbt and mill ones), as well
+as [`extraFiles`](#extrafiles).
 
 ### sbt: `~/.sbt` and `~/.ivy2/cache`
 
@@ -78,27 +76,16 @@ or when files matching [`extraMillFiles`](#extramillfiles) are found.
 Its key also takes into account the mill build definition files: `*.mill`, `*.mill.yaml`,
 `*.mill.scala` and `*.sc` (for older mill versions).
 
-### Ammonite: `~/.ammonite`
-
-Cached when any of these Ammonite scripts are found:
-- `*.sc`
-- `*/*.sc`
-
-or when files matching [`ammoniteScripts`](#ammonitescripts) are found.
-
-Set [`ignoreAmmonite`](#ignoreammonite) to `true` to never cache it (for example if your `*.sc`
-files are mill build files, not Ammonite scripts).
-
 ## How cache keys work
 
 Each cache has its own key, made of the following parts, separated by `-`:
 
-1. the cache name (`coursier`, `sbt-ivy2-cache`, `mill` or `ammonite`),
+1. the cache name (`coursier`, `sbt-ivy2-cache` or `mill`),
 2. the job id (see [`job`](#job) and [`ignoreJob`](#ignorejob)),
 3. `matrix-` followed by a hash of the matrix values, if the job uses a matrix (see
    [`matrix`](#matrix) and [`ignoreMatrix`](#ignorematrix)),
 4. [`extraKey`](#extrakey), if set,
-5. the cache-specific extra key ([`extraSbtKey`](#extrasbtkey-extramillkey-extraammonitekey), …), if set,
+5. the cache-specific extra key ([`extraSbtKey`](#extrasbtkey-extramillkey), …), if set,
 6. a hash of the build files [listed above](#cached-directories), of [`extraFiles`](#extrafiles),
    and of [`extraHashedContent`](#extrahashedcontent).
 
@@ -135,16 +122,14 @@ All inputs are optional.
 | [`extraFiles`](#extrafiles) | | Extra files to hash in all cache keys |
 | [`extraSbtFiles`](#extrasbtfiles) | | Extra sbt build files |
 | [`extraMillFiles`](#extramillfiles) | | Extra mill build files |
-| [`ammoniteScripts`](#ammonitescripts) | | Extra Ammonite scripts |
 | [`extraKey`](#extrakey) | | Extra value added to all cache keys |
-| [`extraSbtKey`, `extraMillKey`, `extraAmmoniteKey`](#extrasbtkey-extramillkey-extraammonitekey) | | Extra value added to a single cache key |
+| [`extraSbtKey`, `extraMillKey`](#extrasbtkey-extramillkey) | | Extra value added to a single cache key |
 | [`extraHashedContent`](#extrahashedcontent) | | Extra content to hash in all cache keys |
-| [`extraSbtHashedContent`, `extraMillHashedContent`, `extraAmmoniteHashedContent`](#extrasbthashedcontent-extramillhashedcontent-extraammonitehashedcontent) | | Extra content to hash in a single cache key |
+| [`extraSbtHashedContent`, `extraMillHashedContent`](#extrasbthashedcontent-extramillhashedcontent) | | Extra content to hash in a single cache key |
 | [`job`](#job) | `${{ github.job }}` | Job name, added to the cache keys |
 | [`matrix`](#matrix) | `${{ toJson(matrix) }}` | Matrix values, hashed in the cache keys |
 | [`ignoreJob`](#ignorejob) | `false` | Leave the job name out of the cache keys |
 | [`ignoreMatrix`](#ignorematrix) | `false` | Leave the matrix values out of the cache keys |
-| [`ignoreAmmonite`](#ignoreammonite) | `false` | Never cache `~/.ammonite` |
 | [`disableFallback`](#disablefallback) | `false` | Only restore caches whose key matches exactly |
 | [`cacheMode`](#cachemode) | | Restrict cache access for this step (`read`, `write`, `write-only`, `none`) |
 
@@ -201,11 +186,6 @@ the sbt and coursier cache keys, and finding any of them enables the sbt cache.
 Extra mill build files, same format as [`extraFiles`](#extrafiles). They are taken into account in
 the mill and coursier cache keys, and finding any of them enables the mill cache.
 
-### `ammoniteScripts`
-
-Extra Ammonite scripts, same format as [`extraFiles`](#extrafiles). They are taken into account in
-the Ammonite and coursier cache keys, and finding any of them enables the Ammonite cache.
-
 ### `extraKey`
 
 Extra value added as is to the keys of all caches. See [How cache keys work](#how-cache-keys-work).
@@ -214,9 +194,9 @@ Use it to have separate caches for jobs that would get the same keys otherwise. 
 don't fit in a cache key, or that you'd rather not show in the logs, use
 [`extraHashedContent`](#extrahashedcontent).
 
-### `extraSbtKey`, `extraMillKey`, `extraAmmoniteKey`
+### `extraSbtKey`, `extraMillKey`
 
-Same as [`extraKey`](#extrakey), but only added to the key of the sbt, mill, or Ammonite cache.
+Same as [`extraKey`](#extrakey), but only added to the key of the sbt or mill cache.
 
 ### `extraHashedContent`
 
@@ -224,10 +204,10 @@ Extra content to take into account in the keys of all caches. It is hashed along
 files, so changing it gives new caches, initialized from the previous ones
 (see [How cache keys work](#how-cache-keys-work)).
 
-### `extraSbtHashedContent`, `extraMillHashedContent`, `extraAmmoniteHashedContent`
+### `extraSbtHashedContent`, `extraMillHashedContent`
 
 Same as [`extraHashedContent`](#extrahashedcontent), but only taken into account in the key of the
-sbt, mill, or Ammonite cache, and in the key of the coursier cache.
+sbt or mill cache, and in the key of the coursier cache.
 
 ### `job`
 
@@ -255,14 +235,6 @@ Default: `false`
 Set to `true` to leave the matrix values out of the cache keys, so that the instances of a matrix
 job share their caches.
 
-### `ignoreAmmonite`
-
-Default: `false`
-
-Set to `true` to skip saving and restoring the Ammonite cache, regardless of whether the repository
-contains `.sc` scripts. Ammonite scripts aren't taken into account in the coursier cache key either
-then.
-
 ### `disableFallback`
 
 Default: `false`
@@ -288,7 +260,6 @@ For example, pass `read` to restore caches without saving them.
 | `cache-hit-coursier` | `true` if the coursier cache was restored from an exact key match |
 | `cache-hit-sbt-ivy2-cache` | `true` if the sbt cache was restored from an exact key match |
 | `cache-hit-mill` | `true` if the mill cache was restored from an exact key match |
-| `cache-hit-ammonite` | `true` if the Ammonite cache was restored from an exact key match |
 
 Each output is `false` when no cache or only a [fallback](#how-cache-keys-work) one was restored,
 and empty when the corresponding cache isn't handled (no sbt files for `cache-hit-sbt-ivy2-cache`,
@@ -354,7 +325,7 @@ steps:
   - uses: actions/checkout@v7
   - uses: coursier/cache-action@v8
     with:
-      cacheMode: read   # restore the coursier / sbt / mill / Ammonite caches, but never save them
+      cacheMode: read   # restore the coursier / sbt / mill caches, but never save them
 ```
 
 `cacheMode` can only narrow what the workflow or job grants. Combining `cacheMode: read` with a job
