@@ -1,57 +1,24 @@
 import * as cache from '@actions/cache'
 import * as core from '@actions/core'
-import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import {createHash} from 'crypto'
 import {stat} from 'fs'
 import {readFile, stat as statFile, unlink, writeFile} from 'fs/promises'
 import * as path from 'path'
 import {cacheModeAllowsWrite, setupCacheMode} from './cacheMode.js'
-let _unameValue = ''
 
 // This should catch some ETIMEDOUT errors seen in the restore cache step.
 // Same as https://github.com/actions/cache/blob/0638051e9af2c23d10bb70fa9beffcad6cff9ce3/src/save.ts#L10
 process.on('uncaughtException', e => core.info(`[warning] ${e.message}`))
 
-async function uname(): Promise<string> {
-  if (!_unameValue) {
-    // from https://github.com/c-hive/gha-npm-cache/blob/1d899ca6403e4536a2855679ab78f5b89a870863/src/restore.js#L6-L17
-    let output = ''
-    const options = {
-      silent: true,
-      listeners: {
-        stdout: (data: unknown) => {
-          output += String(data)
-        }
-      }
-    }
-    await exec.exec('uname', ['-s'], options)
-
-    _unameValue = output.trim()
-  }
-
-  return _unameValue
-}
-
-function getOs(unameShort: string): string {
-  if (unameShort.startsWith('Darwin')) return 'darwin'
-  if (unameShort.startsWith('Linux')) return 'linux'
-  if (
-    unameShort.startsWith('CYGWIN') ||
-    unameShort.startsWith('MINGW') ||
-    unameShort.startsWith('MSYS')
-  )
-    return 'win'
-  return 'unknown'
-}
-
 // The cache itself (v1), not the directory containing it, that also holds the archive
 // cache (arc, whose extracted archives can be extracted again from the archives in v1), and
 // the privileged archive cache (priv, which has files only root can read, and which tar fails
 // to save then)
-function getCachePath(os: string): string {
-  if (os === 'win') return '~\\AppData\\Local\\Coursier\\Cache\\v1'
-  if (os === 'darwin') return '~/Library/Caches/Coursier/v1'
+function getCachePath(): string {
+  if (process.platform === 'win32')
+    return '~\\AppData\\Local\\Coursier\\Cache\\v1'
+  if (process.platform === 'darwin') return '~/Library/Caches/Coursier/v1'
   return '~/.cache/coursier/v1'
 }
 
@@ -220,7 +187,7 @@ async function restoreCoursierCache(
     paths = [userSpecifiedCachePath]
     core.exportVariable('COURSIER_CACHE', userSpecifiedCachePath)
   } else {
-    paths = [getCachePath(getOs(await uname()))]
+    paths = [getCachePath()]
   }
 
   await restoreCache(
