@@ -1,157 +1,125 @@
 name: 'coursier-cache-action'
-description: 'Save and restore the coursier, sbt, mill and Ammonite caches of Scala builds'
+description: 'Save and restore the coursier, sbt and mill caches of Scala builds'
 author: 'Alexandre Archambault'
 branding:
   icon: 'arrow-down'
   color: 'white'
+# See the README for more details about each input:
+# https://github.com/coursier/cache-action#inputs
 inputs:
   root:
     required: false
     description: >
-      Root directory containing build definition sources (build.sbt, build.mill, etc.).
-      If the sbt or mill build definition files are in a sub-directory, pass the path to this
-      sub-directory here.
+      Directory containing the build definition (build.sbt, build.mill, etc.), relative to the
+      repository root. Set it if your build is in a sub-directory.
     default: '.'
   path:
     required: false
     description: >
-      Override for the path of the coursier cache.
-      By default, the coursier cache is assumed to be where COURSIER_CACHE points to, if that
-      environment variable is set, else in the default OS-dependent location.
-      Set this input to override that. Note that this action will also set COURSIER_CACHE
-      if an override is specified, so that you don't have to set it yourself.
+      Path of the coursier cache. Defaults to the directory the COURSIER_CACHE environment
+      variable points to, if it is set, else to the default OS-dependent location. When set,
+      COURSIER_CACHE is also set to this path for the subsequent steps.
     default: ''
-  job:
-    required: false
-    description: >
-      Job name, to be used in the cache key, so that each job has its own cache.
-    default: '${{ github.job }}'
-  matrix:
-    required: false
-    description: >
-      Matrix values, when using the matrix strategy.
-      When using build matrices for more than the OS (for Scala versions, JDKs, test suites, …),
-      pass the matrix values here, with `matrix: -dollar-{{ toJson(matrix) }}`. The matrix instance is hashed,
-      and added to the cache key, so that each matrix instance has its own cache, and those caches don't
-      collide.
-    default: '${{ toJson(matrix) }}'
   extraFiles:
     required: false
     description: >
-      Extra files to take into account in the keys of all caches.
-      By default, sbt build definition files (*.sbt, project/**.{scala,sbt}, project/build.properties),
-      mill build definition files (*.mill, *.mill.yaml, *.mill.scala, *.sc, .mill-version, ./mill),
-      and Ammonite scripts (*.sc, */*.sc) are hashed to uniquely identify the cached data. Upon
-      cache restoration, if an exact match is found, the cache is not saved again at the end of the job.
-      In case of no exact match, it is assumed new files may have been fetched; the closest previous cache
-      (same job and matrix values if possible), if any, is restored, but a new cache is persisted with a new key at the end of the job.
-      To take into account extra files in the cache key, pass via extraFiles either
-      - a single path as a string
-      - multiple paths in a JSON array, encoded in a string
-      Globs are accepted (processed by [@actions/glob](https://www.npmjs.com/package/@actions/glob)).
-    default: ''
-  extraKey:
-    required: false
-    description: >
-      Extra value to be appended to the keys of all caches.
-      See extraFiles for more details.
-    default: ''
-  extraHashedContent:
-    required: false
-    description: >
-      Extra content to take into account in the keys of all caches.
-      See extraFiles for more details.
-      The content of extraHashedContent is hashed along with the build files.
-    default: ''
-  read-cs-cache-files:
-    required: false
-    description: >
-      Set 'false' to ignore the .github/cs-cache-files file. When that file exists, each of its
-      lines is a path or glob added to extraFiles.
-    default: 'true'
-  extraCoursierKey:
-    required: false
-    description: >
-      Extra value to be appended to the coursier cache key.
-      See extraFiles for more details.
-    default: ''
-  extraCoursierHashedContent:
-    required: false
-    description: >
-      Extra content to take into account in the coursier cache key. Same format as extraHashedContent.
+      Extra files to take into account in the keys of all caches, in addition to the sbt and mill
+      build files. Either a single path or glob, or a JSON array of paths or globs, like
+      '["dependencies.json", "scripts/*.sh"]'. Paths are relative to the repository root.
+      Entries of the .github/cs-cache-files file, if it exists, are added to these
+      (see read-cs-cache-files).
     default: ''
   extraSbtFiles:
     required: false
     description: >
-      Extra sbt files to take into account in the sbt cache key. Same format as extraFiles.
-    default: ''
-  extraSbtKey:
-    required: false
-    description: >
-      Extra value to be appended to the sbt cache key.
-      See extraFiles for more details.
-    default: ''
-  extraSbtHashedContent:
-    required: false
-    description: >
-      Extra content to take into account in the sbt cache key. Same format as extraHashedContent.
+      Extra sbt build files, same format as extraFiles. They are taken into account in the sbt and
+      coursier cache keys, and finding any of them enables the sbt cache.
     default: ''
   extraMillFiles:
     required: false
     description: >
-      Extra mill files to take into account in the mill cache key. Same format as extraFiles.
+      Extra mill build files, same format as extraFiles. They are taken into account in the mill
+      and coursier cache keys, and finding any of them enables the mill cache.
+    default: ''
+  extraKey:
+    required: false
+    description: >
+      Extra value added as is to the keys of all caches. For values you'd rather have hashed, use
+      extraHashedContent.
+    default: ''
+  extraCoursierKey:
+    required: false
+    description: >
+      Same as extraKey, but only added to the coursier cache key.
+    default: ''
+  extraSbtKey:
+    required: false
+    description: >
+      Same as extraKey, but only added to the sbt cache key.
     default: ''
   extraMillKey:
     required: false
     description: >
-      Extra value to be appended to the mill cache key.
-      See extraFiles for more details.
+      Same as extraKey, but only added to the mill cache key.
+    default: ''
+  extraHashedContent:
+    required: false
+    description: >
+      Extra content to take into account in the keys of all caches. It is hashed along with the
+      build files.
+    default: ''
+  extraCoursierHashedContent:
+    required: false
+    description: >
+      Same as extraHashedContent, but only taken into account in the coursier cache key.
+    default: ''
+  extraSbtHashedContent:
+    required: false
+    description: >
+      Same as extraHashedContent, but only taken into account in the sbt and coursier cache keys.
     default: ''
   extraMillHashedContent:
     required: false
     description: >
-      Extra content to take into account in the mill cache key. Same format as extraHashedContent.
+      Same as extraHashedContent, but only taken into account in the mill and coursier cache keys.
     default: ''
-  ammoniteScripts:
+  read-cs-cache-files:
     required: false
     description: >
-      Ammonite scripts to take into account in the Ammonite cache key. Same format as extraFiles.
-    default: ''
-  extraAmmoniteKey:
+      Set to 'false' to ignore the .github/cs-cache-files file. When that file exists, each of its
+      lines is a path or glob added to extraFiles.
+    default: 'true'
+  job:
     required: false
     description: >
-      Extra value to be appended to the Ammonite cache key.
-      See extraFiles for more details.
-    default: ''
-  extraAmmoniteHashedContent:
+      Job name, added to the cache keys, so that each job has its own caches. Defaults to the id of
+      the current job.
+    default: '${{ github.job }}'
+  matrix:
     required: false
     description: >
-      Extra content to take into account in the Ammonite cache key. Same format as extraHashedContent.
-    default: ''
+      Matrix values, hashed and added to the cache keys, so that each instance of a matrix job has
+      its own caches. Defaults to the matrix values of the current job, so that you don't need to
+      set it in most cases.
+    default: '${{ toJson(matrix) }}'
   ignoreJob:
     required: false
     description: >
-      Set 'true' if you don't want to use the job id as part of the cache keys.
+      Set to 'true' to leave the job name out of the cache keys, so that different jobs share
+      their caches.
     default: 'false'
   ignoreMatrix:
     required: false
     description: >
-      Set 'true' if you don't want to use the matrix values as part of the cache keys.
-    default: 'false'
-  ignoreAmmonite:
-    required: false
-    description: >
-      Set 'true' to skip saving and restoring the Ammonite cache,
-      regardless of whether the repository contains .sc scripts.
+      Set to 'true' to leave the matrix values out of the cache keys, so that the instances of a
+      matrix job share their caches.
     default: 'false'
   disableFallback:
     required: false
     description: >
-      Set 'true' to disable falling back to a less specific cache key when there is no exact
-      cache hit. By default, if no exact cache match is found, the action will restore from a
-      more general cache key (e.g. from a different job or build configuration). Disabling this
-      prevents unintended cache sharing across jobs or matrix instances that have different
-      dependency sets.
+      Set to 'true' to only restore caches whose key matches exactly. By default, when there's no
+      exact match, the closest cache is restored, which can come from another job or matrix
+      instance.
     default: 'false'
   cacheMode:
     required: false
@@ -161,15 +129,38 @@ inputs:
       pass 'read' to restore caches without saving them. Leave empty to use the workflow or job
       cache-mode as is.
     default: ''
+  ammoniteScripts:
+    required: false
+    description: >
+      Deprecated, as Ammonite support is. Extra Ammonite scripts, same format as extraFiles.
+    default: ''
+  extraAmmoniteKey:
+    required: false
+    description: >
+      Deprecated, as Ammonite support is. Same as extraKey, but only added to the Ammonite cache
+      key.
+    default: ''
+  extraAmmoniteHashedContent:
+    required: false
+    description: >
+      Deprecated, as Ammonite support is. Same as extraHashedContent, but only taken into account
+      in the Ammonite and coursier cache keys.
+    default: ''
+  ignoreAmmonite:
+    required: false
+    description: >
+      Deprecated, as Ammonite support is. Set to 'true' to never save or restore the Ammonite
+      cache (~/.ammonite), even if the repository contains *.sc files.
+    default: 'false'
 outputs:
   cache-hit-coursier:
-    description: 'A boolean value to indicate a match was found for the coursier cache'
+    description: "'true' if the coursier cache was restored from an exact key match"
   cache-hit-sbt-ivy2-cache:
-    description: 'A boolean value to indicate a match was found for the sbt cache (~/.sbt and ~/.ivy2/cache)'
+    description: "'true' if the sbt cache (~/.sbt and ~/.ivy2/cache) was restored from an exact key match"
   cache-hit-mill:
-    description: 'A boolean value to indicate a match was found for the mill cache'
+    description: "'true' if the mill cache was restored from an exact key match"
   cache-hit-ammonite:
-    description: 'A boolean value to indicate a match was found for the Ammonite cache'
+    description: "Deprecated, as Ammonite support is. 'true' if the Ammonite cache was restored from an exact key match"
 runs:
   using: 'node24'
   main: 'dist/restore/index.js'

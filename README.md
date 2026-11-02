@@ -10,7 +10,7 @@ changes, and only then.
 
 ## Usage
 
-Add a `coursier/cache-action@v8` step to your workflow, after checking out your repository and
+Add a `coursier/cache-action@v9` step to your workflow, after checking out your repository and
 before running your build:
 
 ```yaml
@@ -19,11 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: coursier/cache-action@v8
+      - uses: coursier/cache-action@v9
+      - uses: coursier/setup-action@v3   # installs a JVM and sbt, if your runner doesn't have them
+        with:
+          apps: sbt
       - run: sbt test
 ```
 
 The caches are restored when the step runs, and saved at the end of the job, if the job succeeds.
+Placing the step before the ones that install tools with coursier (like
+[`coursier/setup-action`](https://github.com/coursier/setup-action)) lets them benefit from the
+cache too.
+
+This action only handles caches: it doesn't install a JVM, sbt or mill itself.
 
 No configuration is needed in most cases. The [inputs](#inputs) let you
 - point the action to a build in a sub-directory ([`root`](#root)),
@@ -34,7 +42,7 @@ No configuration is needed in most cases. The [inputs](#inputs) let you
 
 | Cache | Directories | Cached when | Output |
 |-------|-------------|-------------|--------|
-| [Coursier](#coursier-cache) | `~/.cache/coursier/v1` (Linux), `~/Library/Caches/Coursier/v1` (macOS), `~\AppData\Local\Coursier\Cache\v1` (Windows) | Always | `cache-hit-coursier` |
+| [Coursier](#coursier-cache) | `~/.cache/coursier/v1` (Linux), `~/Library/Caches/Coursier/v1` (macOS), `~\AppData\Local\Coursier\Cache\v1` (Windows), or `COURSIER_CACHE` / [`path`](#path) if set | Always | `cache-hit-coursier` |
 | [sbt](#sbt-sbt-and-ivy2cache) | `~/.sbt`, `~/.ivy2/cache` | sbt build files are found | `cache-hit-sbt-ivy2-cache` |
 | [mill](#mill-cachemill) | `~/.cache/mill` | mill files are found | `cache-hit-mill` |
 
@@ -45,9 +53,9 @@ by default.
 
 Always cached. Only the cache itself is (`v1`, in the
 [default OS-dependent location](https://get-coursier.io/docs/cache.html#default-location), or
-wherever [`path`](#path) points), not the directories next to it, like the archive cache (`arc`,
-whose archives get extracted again from the ones in `v1`) or the privileged archive cache (`priv`,
-that has files only root can read).
+wherever the `COURSIER_CACHE` environment variable or the [`path`](#path) input point), not the
+directories next to it, like the archive cache (`arc`, whose archives get extracted again from the
+ones in `v1`) or the privileged archive cache (`priv`, that has files only root can read).
 
 Its key takes into account the build files of all the caches below (sbt and mill ones), as well
 as [`extraFiles`](#extrafiles).
@@ -116,6 +124,10 @@ Build files are hashed with LF line endings, so that checking them out with CRLF
 Caches are only saved if the job succeeds, and only if the [cache mode](#cache-access-cache-mode)
 allows it.
 
+The action logs the key and the fallback keys of each cache, and which one was restored, if any,
+in the output of its step. If a cache isn't restored the way you expect, comparing these between
+runs usually shows which part of the key changed.
+
 ## Inputs
 
 All inputs are optional.
@@ -148,7 +160,7 @@ If the sbt or mill build definition files are in a sub-directory, pass the path 
 sub-directory here:
 
 ```yaml
-- uses: coursier/cache-action@v8
+- uses: coursier/cache-action@v9
   with:
     root: backend
 ```
@@ -175,7 +187,7 @@ Globs are processed by [@actions/glob](https://www.npmjs.com/package/@actions/gl
 relative to the repository root, not to [`root`](#root).
 
 ```yaml
-- uses: coursier/cache-action@v8
+- uses: coursier/cache-action@v9
   with:
     extraFiles: '["dependencies.json", "scripts/*.sh"]'
 ```
@@ -254,11 +266,11 @@ job share their caches.
 
 Default: `false`
 
-Set to `true` to disable falling back to a less specific cache key when there is no exact cache
-hit. By default, if no exact cache match is found, the action restores a cache with a more general
-key (e.g. from a different job or build configuration, see
-[How cache keys work](#how-cache-keys-work)). Disabling this prevents unintended cache sharing
-across jobs or matrix instances that have different dependency sets.
+Set to `true` to only restore caches whose key matches exactly. By default, when there's no exact
+match, the action restores the closest cache, which can come from another job or matrix instance
+(see [How cache keys work](#how-cache-keys-work)). Disabling the fallback prevents sharing caches
+across jobs or matrix instances with different dependencies, at the cost of starting from an empty
+cache whenever the build files change.
 
 ### `cacheMode`
 
@@ -290,7 +302,7 @@ to skip:
 steps:
   - uses: actions/checkout@v7
 
-  - uses: coursier/cache-action@v8
+  - uses: coursier/cache-action@v9
     id: coursier-cache
 
   - name: Fetch dependencies
@@ -328,7 +340,7 @@ jobs:
     cache-mode: read
     steps:
       - uses: actions/checkout@v7
-      - uses: coursier/cache-action@v8
+      - uses: coursier/cache-action@v9
       - run: sbt test
 ```
 
@@ -338,7 +350,7 @@ To restrict only this action, and leave other caching steps of the job unaffecte
 ```yaml
 steps:
   - uses: actions/checkout@v7
-  - uses: coursier/cache-action@v8
+  - uses: coursier/cache-action@v9
     with:
       cacheMode: read   # restore the coursier / sbt / mill caches, but never save them
 ```
@@ -364,7 +376,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: coursier/cache-action@v8
+      - uses: coursier/cache-action@v9
         with:
           cacheMode: ${{ github.ref == 'refs/heads/main' && 'write' || 'read' }}
       - run: sbt test
@@ -380,6 +392,10 @@ it means separate workflows, such as one triggered on `push` to `main` (where th
 triggered on `pull_request` that sets `cache-mode: read` at the top level.
 
 ## Cache invalidation
+
+As a cache restored from a fallback key is saved again under the new key with everything it
+already had, caches only grow over time, and keep dependencies your build doesn't use anymore.
+Invalidating them from time to time gets rid of those.
 
 To force the caches to be saved again without changing your build files, set the
 `COURSIER_CACHE_ACTION_CACHE_VERSION` environment variable in your workflow. Changing its value
@@ -400,7 +416,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: coursier/cache-action@v8
+      - uses: coursier/cache-action@v9
 ```
 
 Or it can be scoped to only the `coursier/cache-action` step:
@@ -408,7 +424,7 @@ Or it can be scoped to only the `coursier/cache-action` step:
 ```yaml
 steps:
   - uses: actions/checkout@v7
-  - uses: coursier/cache-action@v8
+  - uses: coursier/cache-action@v9
     env:
       COURSIER_CACHE_ACTION_CACHE_VERSION: 1   # increment this value to invalidate the caches
 ```
